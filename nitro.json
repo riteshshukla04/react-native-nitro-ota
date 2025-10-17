@@ -1,0 +1,17 @@
+{
+  "cxxNamespace": ["nitroota"],
+  "ios": {
+    "iosModuleName": "NitroOta"
+  },
+  "android": {
+    "androidNamespace": ["nitroota"],
+    "androidCxxLibName": "nitroota"
+  },
+  "autolinking": {
+    "NitroOta": {
+      "swift": "NitroOta",
+      "kotlin": "NitroOta"
+    }
+  },
+  "ignorePaths": ["node_modules"]
+}
