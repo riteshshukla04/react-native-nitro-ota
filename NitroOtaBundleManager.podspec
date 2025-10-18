@@ -19,16 +19,9 @@ Pod::Spec.new do |s|
   # Set module name explicitly
   s.module_name = 'NitroOtaBundleManager'
   
-  # No C++ interop - pure Swift/Objective-C mode
-  s.pod_target_xcconfig = {
-    'SWIFT_OBJC_INTEROP_MODE' => 'objc',
-    'DEFINES_MODULE' => 'YES'
-  }
-  
-  s.user_target_xcconfig = {
-    'SWIFT_OBJC_INTEROP_MODE' => 'objc'
-  }
 
+
+  install_modules_dependencies(s)
   # No other dependencies needed
 end
 
