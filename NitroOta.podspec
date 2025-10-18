@@ -19,6 +19,11 @@ Pod::Spec.new do |s|
     "ios/**/*.{m,mm}",
     "cpp/**/*.{hpp,cpp}",
   ]
+  
+  # Disable Swift C++ interoperability mode
+  s.pod_target_xcconfig = {
+    'SWIFT_OBJC_INTEROP_MODE' => 'objcxx'
+  }
 
   s.dependency 'React-jsi'
   s.dependency 'React-callinvoker'

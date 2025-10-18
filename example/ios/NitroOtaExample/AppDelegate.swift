@@ -2,7 +2,8 @@ import UIKit
 import React
 import React_RCTAppDelegate
 import ReactAppDependencyProvider
-import NitroOta
+// Import standalone bundle manager (no C++ interop, no NitroOta dependency)
+import NitroOtaBundleManager
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -43,13 +44,15 @@ class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
 #if DEBUG
     RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index")
 #else
-    // Check if we have a stored OTA bundle path
-    if let storedBundlePath = getStoredBundlePath(),
-       let bundleURL = URL(string: storedBundlePath) {
+    // Check if we have a stored OTA bundle path using NitroOtaBundleManager
+    if let storedBundlePath = NitroOtaBundleManager.shared.getStoredBundlePath() {
+      let bundleURL = URL(fileURLWithPath: storedBundlePath)
       print("Using stored OTA bundle: \(bundleURL.path)")
+      print("OTA Version: \(NitroOtaBundleManager.shared.getStoredOtaVersion() ?? "unknown")")
       return bundleURL
     } else {
       // Fallback to default bundle
+      print("No OTA bundle found, using default bundle")
       return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
     }
 #endif
