@@ -2,21 +2,38 @@ package com.margelo.nitro.nitroota.utils
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
+import android.os.Build
 
-class PreferencesUtils(private val sharedPreferences: SharedPreferences) {
+class PreferencesUtils(private val sharedPreferences: SharedPreferences, private val versionCode: Long) {
 
     companion object {
-        private const val OTA_UNZIPPED_PATH = "ota_unzipped_path" + "_" + BuildConfig.VERSION_CODE
-        private const val OTA_VERSION = "ota_version" + "_" + BuildConfig.VERSION_CODE
-        private const val OTA_UPDATE_DOWNLOAD_URL = "ota_update_download_url" + "_" + BuildConfig.VERSION_CODE
-        private const val OTA_UPDATE_VERSION_CHECK_URL = "ota_update_version_check_url" + "_" + BuildConfig.VERSION_CODE
-        private const val OTA_BUNDLE_NAME = "ota_bundle_name" + "_" + BuildConfig.VERSION_CODE
+        private fun getAppVersionCode(context: Context): Long {
+            return try {
+                val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    packageInfo.longVersionCode
+                } else {
+                    @Suppress("DEPRECATION")
+                    packageInfo.versionCode.toLong()
+                }
+            } catch (e: PackageManager.NameNotFoundException) {
+                1L // Default fallback
+            }
+        }
 
         fun create(context: Context): PreferencesUtils {
             val sharedPreferences = context.getSharedPreferences("NitroOtaPrefs", Context.MODE_PRIVATE)
-            return PreferencesUtils(sharedPreferences)
+            val versionCode = getAppVersionCode(context)
+            return PreferencesUtils(sharedPreferences, versionCode)
         }
     }
+
+    private val OTA_UNZIPPED_PATH = "ota_unzipped_path_$versionCode"
+    private val OTA_VERSION = "ota_version_$versionCode"
+    private val OTA_UPDATE_DOWNLOAD_URL = "ota_update_download_url_$versionCode"
+    private val OTA_UPDATE_VERSION_CHECK_URL = "ota_update_version_check_url_$versionCode"
+    private val OTA_BUNDLE_NAME = "ota_bundle_name_$versionCode"
 
     /**
      * Stores the unzipped OTA path.
