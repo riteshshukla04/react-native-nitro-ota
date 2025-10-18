@@ -7,7 +7,7 @@ Download, unzip, and apply JavaScript bundle updates at runtime without going th
 ## ✨ Features
 
 - 🚀 **Native Performance** - Built with Nitro Modules for maximum speed
-- 🧵 **Off JS Thread** - All operations run on native threads, keeping your JS thread free
+- 🧵 **Off JS Thread** - All operations run on different threads, keeping your JS thread free
 - 🌐 **Server Agnostic** - Works with any CDN, S3, GitHub Releases, or custom server
 - 📦 **Automatic Bundle Management** - Handles download, extraction, and cleanup
 - 🔒 **Version Control** - Built-in version checking and management
