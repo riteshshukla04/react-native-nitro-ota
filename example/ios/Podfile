@@ -9,6 +9,10 @@ require Pod::Executable.execute_command('node', ['-p',
 
 platform :ios, min_ios_version_supported
 prepare_react_native_project!
+use_modular_headers!
+
+pod 'glog', :podspec => '../node_modules/react-native/third-party-podspecs/glog.podspec', :modular_headers => false
+
 
 linkage = ENV['USE_FRAMEWORKS']
 if linkage != nil

@@ -6,11 +6,11 @@ import android.content.SharedPreferences
 class PreferencesUtils(private val sharedPreferences: SharedPreferences) {
 
     companion object {
-        private const val OTA_UNZIPPED_PATH = "ota_unzipped_path"
-        private const val OTA_VERSION = "ota_version"
-        private const val OTA_UPDATE_DOWNLOAD_URL = "ota_update_download_url"
-        private const val OTA_UPDATE_VERSION_CHECK_URL = "ota_update_version_check_url"
-        private const val OTA_BUNDLE_NAME = "ota_bundle_name"
+        private const val OTA_UNZIPPED_PATH = "ota_unzipped_path" + "_" + BuildConfig.VERSION_CODE
+        private const val OTA_VERSION = "ota_version" + "_" + BuildConfig.VERSION_CODE
+        private const val OTA_UPDATE_DOWNLOAD_URL = "ota_update_download_url" + "_" + BuildConfig.VERSION_CODE
+        private const val OTA_UPDATE_VERSION_CHECK_URL = "ota_update_version_check_url" + "_" + BuildConfig.VERSION_CODE
+        private const val OTA_BUNDLE_NAME = "ota_bundle_name" + "_" + BuildConfig.VERSION_CODE
 
         fun create(context: Context): PreferencesUtils {
             val sharedPreferences = context.getSharedPreferences("NitroOtaPrefs", Context.MODE_PRIVATE)
