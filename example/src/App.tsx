@@ -1,7 +1,17 @@
 import { useEffect, useState } from 'react';
 import { Text, View, StyleSheet, Button, Alert } from 'react-native';
-import { OTAUpdateManager } from 'react-native-nitro-ota';
+import { OTAUpdateManager, githubOTA } from 'react-native-nitro-ota';
 
+
+
+
+
+
+
+const githubUrl = "https://github.com/riteshshukla04/nitro-ota-bundle";
+const otaVersionPath = "ota.version";
+const ref = "main";
+ 
 
 
 export default function App() {
@@ -9,8 +19,11 @@ export default function App() {
   const [otaVersion, setOtaVersion] = useState<string | null>(null);
   const [unzippedPath, setUnzippedPath] = useState<string | null>(null);
 
-  // Initialize OTA manager
-  const otaManager = new OTAUpdateManager("https://github.com/riteshshukla04/nitro-ota-bundle", "main");
+  // Initialize OTA manager with download URL and version check URL
+  const otaManager = new OTAUpdateManager(
+    githubOTA({ githubUrl, otaVersionPath, ref }).downloadUrl, 
+    githubOTA({ githubUrl, otaVersionPath, ref }).versionUrl
+  );
 
   useEffect(() => {
     // Load stored data on app start

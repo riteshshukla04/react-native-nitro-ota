@@ -16,8 +16,8 @@ class NitroOta : HybridNitroOtaSpec() {
   override fun checkForUpdates(url: String, branch: String?): Promise<Boolean> {
     return Promise.async {
       try {
-        Log.d("NitroOta", "Checking for updates for URL: $url, branch: ${branch ?: "master"}")
-        val hasUpdate = otaManager.checkForUpdates(url, branch ?: "master")
+        Log.d("NitroOta", "Checking for updates using version check URL: $url")
+        val hasUpdate = otaManager.checkForUpdates(url)
         Log.d("NitroOta", "Update check result: $hasUpdate")
         return@async hasUpdate
       } catch (e: Exception) {
@@ -39,24 +39,14 @@ class NitroOta : HybridNitroOtaSpec() {
     return otaManager.getStoredUnzippedPath()
   }
 
-  override fun downloadZipFromGitHub(url: String, branch: String?): Promise<String> {
-    val promise = Promise<String>()
+  override fun downloadZipFromUrl(url: Stri  val promise = Promise<String>()){
 
     // Run the download and unzip on a background thread
-    Thread {
-      try {
-        Log.d("NitroOta", "Starting download from URL: $url with branch: ${branch ?: "master"}")
-        val unzippedPath = otaManager.downloadAndUnzipFromGitHub(url, branch ?: "master")
-
-        Log.d("NitroOta", "Unzipped path: $unzippedPath")
-        promise.resolve(unzippedPath)
-      } catch (e: Exception) {
-        Log.e("NitroOta", "Failed to download and unzip from GitHub", e)
-        promise.reject(RuntimeException("Failed to download and unzip from GitHub: ${e.message}", e))
-      }
-    }.start()
-
-    return promise
+    Promise.async {
+        Log.d("NitroOta", "Starting download from URL: $url")
+        val unzippedPath = otaManager.downloadAndUnzipFromUrl(url, null)
+        return@async unzippedPath
+    }
   }
 
 }

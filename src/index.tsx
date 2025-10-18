@@ -4,14 +4,14 @@ import type { NitroOta } from './NitroOta.nitro';
 const NitroOtaHybridObject =
   NitroModules.createHybridObject<NitroOta>('NitroOta');
 
-export function checkForOTAUpdates(url: string, branch?: string): Promise<boolean> {
-  console.log("checkForUpdates", url, branch);
-  return NitroOtaHybridObject.checkForUpdates(url, branch);
+export function checkForOTAUpdates(versionCheckUrl: string, branch?: string): Promise<boolean> {
+  console.log("checkForUpdates", versionCheckUrl, branch);
+  return NitroOtaHybridObject.checkForUpdates(versionCheckUrl, branch);
 }
 
-export function downloadZipFromGitHub(url: string, branch?: string): Promise<string> {
-  console.log("downloadZipFromGitHub", url, branch);
-  return NitroOtaHybridObject.downloadZipFromGitHub(url, branch);
+export function downloadZipFromUrl(downloadUrl: string, branch?: string): Promise<string> {
+  console.log("downloadZipFromUrl", downloadUrl, branch);
+  return NitroOtaHybridObject.downloadZipFromUrl(downloadUrl, branch);
 }
 
 export function getStoredOtaVersion(): string | null {
@@ -26,12 +26,12 @@ export function getStoredUnzippedPath(): string | null {
  * OTA Update Manager class for handling over-the-air updates
  */
 export class OTAUpdateManager {
-  private repoUrl: string;
-  private branch: string;
+  private downloadUrl: string;
+  private versionCheckUrl?: string;
 
-  constructor(repoUrl: string, branch: string = 'master') {
-    this.repoUrl = repoUrl;
-    this.branch = branch;
+  constructor(downloadUrl: string, versionCheckUrl?: string) {
+    this.downloadUrl = downloadUrl;
+    this.versionCheckUrl = versionCheckUrl;
   }
 
   /**
@@ -39,8 +39,9 @@ export class OTAUpdateManager {
    */
   async checkForUpdates(): Promise<boolean> {
     try {
-      console.log(`OTA: Checking for updates for ${this.repoUrl} on branch ${this.branch}`);
-      return await checkForOTAUpdates(this.repoUrl, this.branch);
+      const urlToCheck = this.versionCheckUrl || this.downloadUrl;
+      console.log(`OTA: Checking for updates using version check URL: ${urlToCheck}`);
+      return await checkForOTAUpdates(urlToCheck);
     } catch (error) {
       console.error('OTA: Failed to check for updates:', error);
       throw error;
@@ -52,8 +53,8 @@ export class OTAUpdateManager {
    */
   async downloadUpdate(): Promise<string> {
     try {
-      console.log(`OTA: Downloading update from ${this.repoUrl} on branch ${this.branch}`);
-      const path = await downloadZipFromGitHub(this.repoUrl, this.branch);
+      console.log(`OTA: Downloading update from ${this.downloadUrl}`);
+      const path = await downloadZipFromUrl(this.downloadUrl);
       console.log(`OTA: Update downloaded to: ${path}`);
       return path;
     } catch (error) {
@@ -80,3 +81,5 @@ export class OTAUpdateManager {
     return path;
   }
 }
+
+export { githubOTA } from './githubUtils';

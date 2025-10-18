@@ -96,25 +96,20 @@ class OtaManager(
     }
 
     /**
-     * Downloads a zip file from GitHub repository URL, unzips it, and stores the path.
-     * Converts Git URLs (https://github.com/user/repo.git) to download URLs automatically.
+     * Downloads a zip file from any URL, unzips it, and stores the path.
      *
-     * @param gitUrl The GitHub repository URL (can be git URL with .git suffix)
-     * @param branch The branch to download (default: "master")
+     * @param downloadUrl The direct URL to download the zip file from
+     * @param versionCheckUrl The URL to check for version information (optional)
      * @return The absolute path to the unzipped directory
      * @throws Exception If download or unzip fails
      */
-    fun downloadAndUnzipFromGitHub(gitUrl: String, branch: String = "master"): String {
-        Log.d("OtaManager", "Starting download for git URL: $gitUrl, branch: $branch")
-
-        // Store the repository URL and branch for future update checks
-        preferences.setOtaRepoUrl(gitUrl)
-        preferences.setOtaRepoBranch(branch)
-        Log.d("OtaManager", "Stored repository URL: $gitUrl and branch: $branch")
-
-        // Convert git URL to download URL
-        val downloadUrl = UrlUtils.convertGitUrlToDownloadUrl(gitUrl, branch)
-        Log.d("OtaManager", "Converted to download URL: $downloadUrl")
+    fun downloadAndUnzipFromUrl(downloadUrl: String, versionCheckUrl: String? = null): String {
+        // Store the URLs for future update checks
+        preferences.setUpdateDownloadUrl(downloadUrl)
+        if (versionCheckUrl != null) {
+            preferences.setUpdateVersionCheckUrl(versionCheckUrl)
+        }
+        Log.d("OtaManager", "Stored download URL: $downloadUrl and version check URL: $versionCheckUrl")
 
         // Create a temporary file for the zip
         val zipFile = File.createTempFile("ota_update", ".zip", context.filesDir)
@@ -136,21 +131,26 @@ class OtaManager(
             ZipUtils.unzip(zipFile, unzipDir)
             Log.d("OtaManager", "Unzip completed, directory contents: ${unzipDir.list()?.joinToString(", ") ?: "No items"}")
 
-            // GitHub zips create a folder with repo-name-branch format
             // Find the actual content folder and rename it to "bundles"
             val contentFolder = findAndRenameContentFolder(unzipDir)
             if (contentFolder != null) {
                 Log.d("OtaManager", "Using content folder: ${contentFolder.absolutePath}")
 
-                // Read ota.version file from the content folder
-                val otaVersionFile = File(contentFolder, "ota.version")
-                if (otaVersionFile.exists() && otaVersionFile.isFile) {
-                    val otaVersion = otaVersionFile.readText().trim()
-                    Log.d("OtaManager", "Found ota.version file with content: $otaVersion")
-                    preferences.setOtaVersion(otaVersion)
-                    Log.d("OtaManager", "Stored OTA version in SharedPreferences: $otaVersion")
+                // Read version from provided URL or fallback to ota.version file
+                if (versionCheckUrl != null) {
+                    try {
+                        val otaVersion = downloadVersionFromUrl(versionCheckUrl)
+                        Log.d("OtaManager", "Downloaded version from URL: $otaVersion")
+                        preferences.setOtaVersion(otaVersion)
+                        Log.d("OtaManager", "Stored OTA version in SharedPreferences: $otaVersion")
+                    } catch (e: Exception) {
+                        Log.w("OtaManager", "Failed to download version from URL: $versionCheckUrl", e)
+                        // Fallback to local file
+                        readVersionFromLocalFile(contentFolder)
+                    }
                 } else {
-                    Log.w("OtaManager", "ota.version file not found in content folder: ${contentFolder.absolutePath}")
+                    // No version check URL provided, try to read from local file
+                    readVersionFromLocalFile(contentFolder)
                 }
 
                 // Store the content folder path in shared preferences
@@ -171,6 +171,17 @@ class OtaManager(
                 preferences.setOtaUnzippedPath(unzipDir.absolutePath)
                 Log.d("OtaManager", "Stored fallback unzip path in SharedPreferences: ${unzipDir.absolutePath}")
 
+                // Try to read version from fallback directory if versionCheckUrl provided
+                if (versionCheckUrl != null) {
+                    try {
+                        val otaVersion = downloadVersionFromUrl(versionCheckUrl)
+                        preferences.setOtaVersion(otaVersion)
+                        Log.d("OtaManager", "Stored OTA version from URL in SharedPreferences: $otaVersion")
+                    } catch (e: Exception) {
+                        Log.w("OtaManager", "Failed to download version from URL for fallback: $versionCheckUrl", e)
+                    }
+                }
+
                 // Store the Android bundle name in shared preferences
                 preferences.setOtaBundleName(ANDROID_BUNDLE_NAME)
                 Log.d("OtaManager", "Stored Android bundle name in SharedPreferences: $ANDROID_BUNDLE_NAME")
@@ -181,7 +192,7 @@ class OtaManager(
                 return unzipDir.absolutePath
             }
         } catch (e: Exception) {
-            Log.e("OtaManager", "Error in downloadAndUnzipFromGitHub for URL: $gitUrl, branch: $branch", e)
+            Log.e("OtaManager", "Error in downloadAndUnzipFromUrl for URL: $downloadUrl", e)
             throw e // Re-throw the exception
         } finally {
             // Always delete the zip file
@@ -218,27 +229,25 @@ class OtaManager(
     }
 
     /**
-     * Checks for updates by downloading the current ota.version file and comparing it
-     * with the stored version. Returns true if a new version is available.
+     * Checks for updates by downloading the current version from the version check URL
+     * and comparing it with the stored version. Returns true if a new version is available.
      *
-     * @param repoUrl The repository URL to check (optional, uses stored URL if not provided)
-     * @param branch The branch to check (optional, uses stored branch if not provided)
+     * @param versionCheckUrl The URL to check for version information (optional, uses stored URL if not provided)
      * @return true if a new version is available, false if current version is up to date
      * @throws Exception If download fails
      */
-    fun checkForUpdates(repoUrl: String? = null, branch: String? = null): Boolean {
-        val checkUrl = repoUrl ?: preferences.getOtaRepoUrl()
-            ?: throw IllegalStateException("No repository URL provided and none stored. Call downloadAndUnzipFromGitHub first or provide URL.")
+    fun checkForUpdates(versionCheckUrl: String? = null): Boolean {
+        val checkUrl = versionCheckUrl ?: preferences.getUpdateVersionCheckUrl()
+            ?: throw IllegalStateException("No version check URL provided and none stored. Call downloadAndUnzipFromUrl with versionCheckUrl first or provide URL.")
 
-        val checkBranch = branch ?: preferences.getOtaRepoBranch() ?: "master"
         val storedVersion = preferences.getOtaVersion()
 
-        Log.d("OtaManager", "Checking for updates for repo: $checkUrl, branch: $checkBranch")
+        Log.d("OtaManager", "Checking for updates using version check URL: $checkUrl")
         Log.d("OtaManager", "Current stored version: $storedVersion")
 
-        // Download current version from repository
-        val currentVersion = downloadOtaVersion(checkUrl, checkBranch)
-        Log.d("OtaManager", "Latest version from repository: $currentVersion")
+        // Download current version from the URL
+        val currentVersion = downloadVersionFromUrl(checkUrl)
+        Log.d("OtaManager", "Latest version from URL: $currentVersion")
 
         // Compare versions
         val hasUpdate = storedVersion != currentVersion
@@ -249,30 +258,42 @@ class OtaManager(
     }
 
     /**
-     * Downloads the ota.version file from GitHub repository and returns its content.
-     * Uses GitHub's raw content API for efficiency - downloads only the version file.
+     * Reads the ota.version file from the local content folder.
      *
-     * @param gitUrl The GitHub repository URL (can be git URL with .git suffix)
-     * @param branch The branch to download from (default: "master")
-     * @return The content of the ota.version file
-     * @throws Exception If download fails or file not found
+     * @param contentFolder The folder to read the version file from
      */
-    private fun downloadOtaVersion(gitUrl: String, branch: String = "master"): String {
-        Log.d("OtaManager", "Downloading OTA version for git URL: $gitUrl, branch: $branch")
+    private fun readVersionFromLocalFile(contentFolder: File) {
+        // Read ota.version file from the content folder
+        val otaVersionFile = File(contentFolder, "ota.version")
+        if (otaVersionFile.exists() && otaVersionFile.isFile) {
+            val otaVersion = otaVersionFile.readText().trim()
+            Log.d("OtaManager", "Found ota.version file with content: $otaVersion")
+            preferences.setOtaVersion(otaVersion)
+            Log.d("OtaManager", "Stored OTA version in SharedPreferences: $otaVersion")
+        } else {
+            Log.w("OtaManager", "ota.version file not found in content folder: ${contentFolder.absolutePath}")
+        }
+    }
 
-        // Convert git URL to raw content URL
-        val rawUrl = UrlUtils.convertGitUrlToRawContentUrl(gitUrl, branch, "ota.version")
-        Log.d("OtaManager", "Raw content URL: $rawUrl")
+    /**
+     * Downloads the version from any URL and returns its content.
+     *
+     * @param versionUrl The URL to download the version from
+     * @return The content of the version file/endpoint
+     * @throws Exception If download fails
+     */
+    private fun downloadVersionFromUrl(versionUrl: String): String {
+        Log.d("OtaManager", "Downloading version from URL: $versionUrl")
 
-        // Download the version file content as text
-        val versionContent = downloadManager.downloadText(rawUrl).trim()
-        Log.d("OtaManager", "Downloaded OTA version: $versionContent")
+        // Download the version content as text
+        val versionContent = downloadManager.downloadText(versionUrl).trim()
+        Log.d("OtaManager", "Downloaded version: $versionContent")
 
         return versionContent
     }
 
     /**
-     * Clears the stored OTA data (path, version, repo URL, and branch) from shared preferences.
+     * Clears the stored OTA data (path, version, download URL, and version check URL) from shared preferences.
      */
     fun clearStoredData() {
         preferences.clearOtaData()
