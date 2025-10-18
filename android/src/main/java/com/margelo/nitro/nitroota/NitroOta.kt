@@ -39,14 +39,12 @@ class NitroOta : HybridNitroOtaSpec() {
     return otaManager.getStoredUnzippedPath()
   }
 
-  override fun downloadZipFromUrl(url: Stri  val promise = Promise<String>()){
-
-    // Run the download and unzip on a background thread
-    Promise.async {
-        Log.d("NitroOta", "Starting download from URL: $url")
-        val unzippedPath = otaManager.downloadAndUnzipFromUrl(url, null)
-        return@async unzippedPath
+  override fun downloadZipFromUrl(url: String, branch: String?): Promise<String> {
+    return Promise.async {
+      Log.d("NitroOta", "Starting download from URL: $url")
+      val unzippedPath = otaManager.downloadAndUnzipFromUrl(url, null)
+      Log.d("NitroOta", "Unzipped path: $unzippedPath")
+      return@async unzippedPath
     }
   }
-
 }
