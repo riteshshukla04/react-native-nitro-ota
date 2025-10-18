@@ -3,7 +3,7 @@ import NitroModules
 class NitroOta: HybridNitroOtaSpec {
     private lazy var otaManager = OtaManager()
 
-    func checkForUpdates(versionCheckUrl: String, branch: String?) throws -> Promise<Bool> {
+    func checkForUpdates(versionCheckUrl: String) throws -> Promise<Bool> {
         return Promise.async {
             do {
                 print("NitroOta: Checking for updates using version check URL: \(versionCheckUrl)")
@@ -17,7 +17,7 @@ class NitroOta: HybridNitroOtaSpec {
         }
     }
 
-    func downloadZipFromUrl(downloadUrl: String, branch: String?) throws -> Promise<String> {
+    func downloadZipFromUrl(downloadUrl: String) throws -> Promise<String> {
         return Promise.async {
             do {
                 print("NitroOta: Starting download from URL: \(downloadUrl)")

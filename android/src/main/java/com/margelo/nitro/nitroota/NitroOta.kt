@@ -13,7 +13,7 @@ class NitroOta : HybridNitroOtaSpec() {
         OtaManager(context)
     }
 
-  override fun checkForUpdates(url: String, branch: String?): Promise<Boolean> {
+  override fun checkForUpdates(url: String): Promise<Boolean> {
     return Promise.async {
       try {
         Log.d("NitroOta", "Checking for updates using version check URL: $url")
@@ -39,7 +39,7 @@ class NitroOta : HybridNitroOtaSpec() {
     return otaManager.getStoredUnzippedPath()
   }
 
-  override fun downloadZipFromUrl(url: String, branch: String?): Promise<String> {
+  override fun downloadZipFromUrl(url: String): Promise<String> {
     return Promise.async {
       Log.d("NitroOta", "Starting download from URL: $url")
       val unzippedPath = otaManager.downloadAndUnzipFromUrl(url, null)

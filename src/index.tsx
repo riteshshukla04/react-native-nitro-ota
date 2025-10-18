@@ -4,14 +4,14 @@ import type { NitroOta } from './NitroOta.nitro';
 const NitroOtaHybridObject =
   NitroModules.createHybridObject<NitroOta>('NitroOta');
 
-export function checkForOTAUpdates(versionCheckUrl: string, branch?: string): Promise<boolean> {
-  console.log("checkForUpdates", versionCheckUrl, branch);
-  return NitroOtaHybridObject.checkForUpdates(versionCheckUrl, branch);
+export function checkForOTAUpdates(versionCheckUrl: string): Promise<boolean> {
+  console.log("checkForUpdates", versionCheckUrl);
+  return NitroOtaHybridObject.checkForUpdates(versionCheckUrl);
 }
 
-export function downloadZipFromUrl(downloadUrl: string, branch?: string): Promise<string> {
-  console.log("downloadZipFromUrl", downloadUrl, branch);
-  return NitroOtaHybridObject.downloadZipFromUrl(downloadUrl, branch);
+export function downloadZipFromUrl(downloadUrl: string): Promise<string> {
+  console.log("downloadZipFromUrl", downloadUrl);
+  return NitroOtaHybridObject.downloadZipFromUrl(downloadUrl);
 }
 
 export function getStoredOtaVersion(): string | null {
