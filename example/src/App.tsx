@@ -10,7 +10,7 @@ import { OTAUpdateManager, githubOTA } from 'react-native-nitro-ota';
 
 const githubUrl = "https://github.com/riteshshukla04/nitro-ota-bundle";
 const otaVersionPath = "ota.version";
-const ref = "main";
+const ref = "iOS";
  
 
 
@@ -73,11 +73,11 @@ export default function App() {
       <Text style={styles.label}>OTA Version:</Text>
       <Text style={styles.value}>{otaVersion || 'None'}</Text>
 
-      <Text style={styles.label}>Last Download Result:</Text>
+      <Text style={styles.label}>Last Downloading Result:</Text>
       <Text style={styles.value}>{result || 'None'}</Text>
 
       <View style={styles.buttonContainer}>
-        <Button title="Download & Extract OTA" onPress={handleDownload} />
+        <Button title="Handle Download" onPress={handleDownload} />
         <Button title="Check for Updates" onPress={handleCheckUpdates} />
       </View>
     </View>

@@ -11,7 +11,7 @@ import Foundation
 class OtaManager {
     private let downloadManager = DownloadManager()
     private let preferences = PreferencesUtils()
-    private let androidBundleName = "index.jsbundle"
+    private let androidBundleName = "main.jsbundle"
 
     // MARK: - Private helper methods
 
