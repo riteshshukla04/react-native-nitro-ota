@@ -14,7 +14,7 @@ Pod::Spec.new do |s|
   s.source       = { :git => "https://github.com/riteshshukla04/react-native-nitro-ota.git", :tag => "#{s.version}" }
 
   # Only include the bundle manager file
-  s.source_files = "ios/NitroOta/Core/NitroOtaBundleManager.swift"
+  s.source_files = "ios/NitroOtaModule/ioslatedBundleManager/NitroOtaBundleManager.swift"
   
   # Set module name explicitly
   s.module_name = 'NitroOtaBundleManager'

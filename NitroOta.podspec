@@ -19,7 +19,6 @@ Pod::Spec.new do |s|
     "ios/**/*.{m,mm}",
     "cpp/**/*.{hpp,cpp}",
   ]
-  s.exclude_files = "ios/NitroOta/Core/NitroOtaBundleManager.swift"
 
   s.dependency 'React-jsi'
   s.dependency 'React-callinvoker'
