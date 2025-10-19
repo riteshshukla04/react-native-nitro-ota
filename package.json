@@ -17,6 +17,7 @@
     "lib",
     "android",
     "ios",
+    "NitroIsolatedBundle",
     "cpp",
     "nitrogen",
     "nitro.json",
