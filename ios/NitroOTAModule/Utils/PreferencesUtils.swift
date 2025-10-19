@@ -1,6 +1,6 @@
 //
 //  PreferencesUtils.swift
-//  Pods
+//  NitroOta
 //
 //  Created by Ritesh Shukla on 19/10/25.
 //
@@ -98,4 +98,3 @@ class PreferencesUtils {
         return getUpdateDownloadUrl() != nil
     }
 }
-

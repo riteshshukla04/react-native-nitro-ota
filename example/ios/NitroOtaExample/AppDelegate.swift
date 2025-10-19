@@ -2,7 +2,6 @@ import UIKit
 import React
 import React_RCTAppDelegate
 import ReactAppDependencyProvider
-// Import standalone bundle manager (no C++ interop, no NitroOta dependency)
 import NitroOtaBundleManager
 
 @main
@@ -44,9 +43,12 @@ class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
 #if DEBUG
     RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index")
 #else
-  
-      return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
-    
+    // Check for OTA bundle first
+    if let bundleURL = NitroOtaBundleManager.shared.getStoredBundleURL() {
+      return bundleURL
+    }
+    // Fallback to main bundle
+    return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
 #endif
   }
 }

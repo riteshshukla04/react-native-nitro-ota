@@ -37,7 +37,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - NitroOta (0.1.1):
+  - NitroOta (0.1.3):
     - boost
     - DoubleConversion
     - fast_float
@@ -68,7 +68,34 @@ PODS:
     - SocketRocket
     - SSZipArchive
     - Yoga
-  - NitroOtaBundleManager (0.1.1)
+  - NitroOtaBundleManager (0.1.3):
+    - boost
+    - DoubleConversion
+    - fast_float
+    - fmt
+    - glog
+    - hermes-engine
+    - RCT-Folly
+    - RCT-Folly/Fabric
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - SocketRocket
+    - Yoga
   - RCT-Folly (2024.11.18.00):
     - boost
     - DoubleConversion
@@ -2328,7 +2355,7 @@ DEPENDENCIES:
   - hermes-engine (from `../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
   - NitroModules (from `../node_modules/react-native-nitro-modules`)
   - NitroOta (from `../..`)
-  - NitroOtaBundleManager (from `../../NitroOtaBundleManager.podspec`)
+  - NitroOtaBundleManager (from `../..`)
   - RCT-Folly (from `../node_modules/react-native/third-party-podspecs/RCT-Folly.podspec`)
   - RCTDeprecation (from `../node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation`)
   - RCTRequired (from `../node_modules/react-native/Libraries/Required`)
@@ -2422,7 +2449,7 @@ EXTERNAL SOURCES:
   NitroOta:
     :path: "../.."
   NitroOtaBundleManager:
-    :path: "../../NitroOtaBundleManager.podspec"
+    :path: "../.."
   RCT-Folly:
     :podspec: "../node_modules/react-native/third-party-podspecs/RCT-Folly.podspec"
   RCTDeprecation:
@@ -2561,8 +2588,8 @@ SPEC CHECKSUMS:
   glog: 5683914934d5b6e4240e497e0f4a3b42d1854183
   hermes-engine: 4f8246b1f6d79f625e0d99472d1f3a71da4d28ca
   NitroModules: 808eee1dfaf75b2c5a63ea3608cb651cc7d13687
-  NitroOta: 9b1b2d1d5afa051bf57846127d44fa97e3201fd2
-  NitroOtaBundleManager: 952b4b345b610c8c4ee87802145ec226fa58014b
+  NitroOta: 8acca59ada8bb7b8c23c3d885448bfa52b0b0630
+  NitroOtaBundleManager: 720b287379af68cb042fb84365819c96313caf4a
   RCT-Folly: 846fda9475e61ec7bcbf8a3fe81edfcaeb090669
   RCTDeprecation: c4b9e2fd0ab200e3af72b013ed6113187c607077
   RCTRequired: e97dd5dafc1db8094e63bc5031e0371f092ae92a
@@ -2630,6 +2657,6 @@ SPEC CHECKSUMS:
   SSZipArchive: fe6a26b2a54d5a0890f2567b5cc6de5caa600aef
   Yoga: fa23995c18b65978347b096d0836f4f5093df545
 
-PODFILE CHECKSUM: 5e10e29c086b8fb7d9b20a927f1583f7b6899768
+PODFILE CHECKSUM: 667f36bae55f837782e882c25b78d724d049ade1
 
 COCOAPODS: 1.15.2

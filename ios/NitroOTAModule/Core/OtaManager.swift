@@ -1,16 +1,17 @@
 //
 //  OtaManager.swift
-//  Pods
+//  NitroOta
 //
 //  Created by Ritesh Shukla on 19/10/25.
 //
+
 
 import Foundation
 
 class OtaManager {
     private let downloadManager = DownloadManager()
     private let preferences = PreferencesUtils()
-    private let androidBundleName = "index.android.bundle"
+    private let androidBundleName = "index.jsbundle"
 
     // MARK: - Private helper methods
 
@@ -253,4 +254,3 @@ class OtaManager {
         print("OtaManager: Cleared stored OTA data from UserDefaults")
     }
 }
-

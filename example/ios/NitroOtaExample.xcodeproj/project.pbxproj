@@ -275,7 +275,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = nitroota.example;
 				PRODUCT_NAME = NitroOtaExample;
-				SWIFT_OBJC_INTEROP_MODE = objcxx;
+				SWIFT_OBJC_INTEROP_MODE = objc;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -303,7 +303,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = nitroota.example;
 				PRODUCT_NAME = NitroOtaExample;
-				SWIFT_OBJC_INTEROP_MODE = objcxx;
+				SWIFT_OBJC_INTEROP_MODE = objc;
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
 			};
