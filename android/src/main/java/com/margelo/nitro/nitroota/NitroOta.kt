@@ -5,6 +5,7 @@ import com.facebook.proguard.annotations.DoNotStrip
 import com.margelo.nitro.NitroModules
 import com.margelo.nitro.core.Promise
 import com.margelo.nitro.nitroota.core.OtaManager
+import com.jakewharton.processphoenix.ProcessPhoenix;
 
 @DoNotStrip
 class NitroOta : HybridNitroOtaSpec() {
@@ -37,6 +38,10 @@ class NitroOta : HybridNitroOtaSpec() {
 
   fun getStoredBundlePath(): String? {
     return otaManager.getStoredUnzippedPath()
+  }
+
+  override fun reloadApp(): Unit {
+    ProcessPhoenix.triggerRebirth(NitroModules.applicationContext!!)
   }
 
   override fun downloadZipFromUrl(url: String): Promise<String> {

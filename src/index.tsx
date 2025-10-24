@@ -5,12 +5,12 @@ const NitroOtaHybridObject =
   NitroModules.createHybridObject<NitroOta>('NitroOta');
 
 export function checkForOTAUpdates(versionCheckUrl: string): Promise<boolean> {
-  console.log("checkForUpdates", versionCheckUrl);
+  console.log('checkForUpdates', versionCheckUrl);
   return NitroOtaHybridObject.checkForUpdates(versionCheckUrl);
 }
 
 export function downloadZipFromUrl(downloadUrl: string): Promise<string> {
-  console.log("downloadZipFromUrl", downloadUrl);
+  console.log('downloadZipFromUrl', downloadUrl);
   return NitroOtaHybridObject.downloadZipFromUrl(downloadUrl);
 }
 
@@ -20,6 +20,10 @@ export function getStoredOtaVersion(): string | null {
 
 export function getStoredUnzippedPath(): string | null {
   return NitroOtaHybridObject.getStoredUnzippedPath();
+}
+
+export function reloadApp(): void {
+  NitroOtaHybridObject.reloadApp();
 }
 
 /**
@@ -40,7 +44,9 @@ export class OTAUpdateManager {
   async checkForUpdates(): Promise<boolean> {
     try {
       const urlToCheck = this.versionCheckUrl || this.downloadUrl;
-      console.log(`OTA: Checking for updates using version check URL: ${urlToCheck}`);
+      console.log(
+        `OTA: Checking for updates using version check URL: ${urlToCheck}`
+      );
       return await checkForOTAUpdates(urlToCheck);
     } catch (error) {
       console.error('OTA: Failed to check for updates:', error);
@@ -79,6 +85,13 @@ export class OTAUpdateManager {
     const path = getStoredUnzippedPath();
     console.log(`OTA: Unzipped path: ${path}`);
     return path;
+  }
+
+  /**
+   * Reloads the app
+   */
+  reloadApp(): void {
+    NitroOtaHybridObject.reloadApp();
   }
 }
 

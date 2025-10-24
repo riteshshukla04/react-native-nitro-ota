@@ -1,18 +1,11 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useEffect, useState } from 'react';
 import { Text, View, StyleSheet, Button, Alert } from 'react-native';
-import { OTAUpdateManager, githubOTA } from 'react-native-nitro-ota';
+import { OTAUpdateManager, githubOTA, reloadApp } from 'react-native-nitro-ota';
 
-
-
-
-
-
-
-const githubUrl = "https://github.com/riteshshukla04/nitro-ota-bundle";
-const otaVersionPath = "ota.version";
-const ref = "iOS";
- 
-
+const githubUrl = 'https://github.com/riteshshukla04/nitro-ota-bundle';
+const otaVersionPath = 'ota.version';
+const ref = 'iOS';
 
 export default function App() {
   const [result, setResult] = useState<string | null>(null);
@@ -21,7 +14,7 @@ export default function App() {
 
   // Initialize OTA manager with download URL and version check URL
   const otaManager = new OTAUpdateManager(
-    githubOTA({ githubUrl, otaVersionPath, ref }).downloadUrl, 
+    githubOTA({ githubUrl, otaVersionPath, ref }).downloadUrl,
     githubOTA({ githubUrl, otaVersionPath, ref }).versionUrl
   );
 
@@ -63,6 +56,10 @@ export default function App() {
     }
   };
 
+  const handleReloadApp = () => {
+    reloadApp();
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>OTA Download Demo</Text>
@@ -79,6 +76,7 @@ export default function App() {
       <View style={styles.buttonContainer}>
         <Button title="Handle Download" onPress={handleDownload} />
         <Button title="Check for Updates" onPress={handleCheckUpdates} />
+        <Button title="Reload App" onPress={handleReloadApp} />
       </View>
     </View>
   );

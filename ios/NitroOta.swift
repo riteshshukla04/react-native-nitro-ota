@@ -8,6 +8,7 @@
 import Foundation
 import NitroModules
 import SSZipArchive
+import React
 
 // MARK: - ZipUtils
 
@@ -495,4 +496,17 @@ class NitroOta: HybridNitroOtaSpec {
     func getStoredBundlePath() -> String? {
         return otaManager.getStoredUnzippedPath()
     }
+    
+  func reloadApp() throws {
+    let reload={
+      RCTTriggerReloadCommandListeners("NITRO OTA UPDATE")
+    }
+    if (Thread.isMainThread) {
+      reload()
+    } else{
+      DispatchQueue.main.sync {
+              reload()
+      }
+    }
+  }
 }

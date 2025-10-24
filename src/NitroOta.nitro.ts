@@ -6,4 +6,5 @@ export interface NitroOta
   downloadZipFromUrl(downloadUrl: string): Promise<string>;
   getStoredOtaVersion(): string | null;
   getStoredUnzippedPath(): string | null;
+  reloadApp(): void;
 }
