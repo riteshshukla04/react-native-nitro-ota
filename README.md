@@ -141,6 +141,7 @@ const hasUpdate = await otaManager.checkForUpdates();
 if (hasUpdate) {
   // Download update
   await otaManager.downloadUpdate();
+  otaManager.reloadApp()
   console.log('Update downloaded! Restart app to apply.');
 }
 
@@ -188,7 +189,12 @@ if (hasUpdate) {
 const currentVersion = NitroOta.getStoredOtaVersion();
 console.log('Current OTA version:', currentVersion);
 ```
+### 3. Get Current Version
 
+```typescript
+ NitroOta.reloadApp();
+
+```
 
 ## 📝 Understanding the `ota.version` File
 

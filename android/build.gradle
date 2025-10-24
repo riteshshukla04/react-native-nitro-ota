@@ -125,4 +125,5 @@ dependencies {
   implementation "com.facebook.react:react-android"
   implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
   implementation project(":react-native-nitro-modules")
+  implementation 'com.jakewharton:process-phoenix:3.0.0'
 }
