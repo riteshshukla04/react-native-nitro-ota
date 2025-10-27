@@ -133,6 +133,9 @@ jobs:
 
       - name: Setup
         uses: ./.github/actions/setup
+      - uses: actions/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
 
       - name: Generate nitrogen code
         run: yarn nitrogen
