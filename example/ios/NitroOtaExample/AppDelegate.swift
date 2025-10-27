@@ -2,7 +2,6 @@ import UIKit
 import React
 import React_RCTAppDelegate
 import ReactAppDependencyProvider
-import NitroOtaBundleManager
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -44,9 +43,7 @@ class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
     RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index")
 #else
     // Check for OTA bundle first
-    if let bundleURL = NitroOtaBundleManager.shared.getStoredBundleURL() {
-      return bundleURL
-    }
+  
     // Fallback to main bundle
     return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
 #endif
