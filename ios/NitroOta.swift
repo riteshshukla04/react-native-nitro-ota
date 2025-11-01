@@ -114,13 +114,21 @@ class DownloadManager {
 
 class PreferencesUtils {
     private let userDefaults: UserDefaults
+
+
+    private let appVersion: String = {
+    let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
+    return version.replacingOccurrences(of: ".", with: "_")
+    }()
+
     private let suiteName = "NitroOtaPrefs"
 
-    private let otaUnzippedPathKey = "ota_unzipped_path"
-    private let otaVersionKey = "ota_version"
-    private let otaUpdateDownloadUrlKey = "ota_update_download_url"
-    private let otaUpdateVersionCheckUrlKey = "ota_update_version_check_url"
-    private let otaBundleNameKey = "ota_bundle_name"
+    // Define keys with version suffix
+    private var otaUnzippedPathKey: String { "ota_unzipped_path_\(appVersion)" }
+    private var otaVersionKey: String { "ota_version_\(appVersion)" }
+    private var otaUpdateDownloadUrlKey: String { "ota_update_download_url_\(appVersion)" }
+    private var otaUpdateVersionCheckUrlKey: String { "ota_update_version_check_url_\(appVersion)" }
+    private var otaBundleNameKey: String { "ota_bundle_name_\(appVersion)" }
 
     init() {
         userDefaults = UserDefaults(suiteName: suiteName) ?? UserDefaults.standard
