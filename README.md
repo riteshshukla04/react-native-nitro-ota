@@ -61,7 +61,7 @@ class MainApplication : Application(), ReactApplication {
 }
 ```
 
-**New Architecture:**
+** If using modern React host :**
 ```kotlin
 import com.facebook.react.ReactHost
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
