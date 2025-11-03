@@ -212,6 +212,69 @@ echo "apple" > ota.version
 echo "$(date +%Y%m%d)" > ota.version  # Use current date as version
 ```
 
+
+## 📦 Creating and Uploading Bundles
+
+Follow these steps to generate and distribute your OTA bundle:
+
+### 1. Generate the JavaScript Bundle
+
+Run the following commands to create a production-ready bundle and assets for your platform:
+
+#### For Android
+```bash
+npx react-native bundle \
+  --platform android \
+  --dev false \
+  --entry-file index.js \
+  --bundle-output android/App-Bundles/index.android.bundle \
+  --assets-dest android/App-Bundles
+```
+
+#### For iOS
+```bash
+npx react-native bundle \
+  --platform ios \
+  --dev false \
+  --entry-file index.js \
+  --bundle-output ios/App-Bundles/index.jsbundle \
+  --assets-dest ios/App-Bundles
+```
+
+> **Result:**  
+> Your bundles and assets will be generated in `android/App-Bundles/` or `ios/App-Bundles/` respectively.
+
+---
+
+### 2. Package the Bundle
+
+After generating the bundle, compress the entire output folder (including the assets) into a single zip file:
+
+```bash
+# For Android
+cd android && zip -r App-Bundles.zip App-Bundles
+
+# For iOS
+cd ios && zip -r App-Bundles.zip App-Bundles
+```
+
+---
+
+### 3. Distribute the Bundle
+
+Upload the zipped bundle file to your backend, CDN, or preferred file hosting service so that your app can download it for OTA updates.
+
+---
+
+### 🔑 Real-World Example
+
+In the **Jellify App**:
+
+- Bundles are uploaded to a dedicated Git branch named by version and platform (e.g., [`nitro_0.19.2_android`](https://github.com/Jellify-Music/App-Bundles/tree/nitro_0.19.2_android)).
+- The upload and versioning are automated via [GitHub Actions workflow](https://github.com/Jellify-Music/App/blob/main/.github/workflows/publish-ota-update.yml).
+
+This keeps OTA releases well organized and accessible for deployment.
+
 ## 🤝 Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for development workflow and guidelines.
