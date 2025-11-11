@@ -1,0 +1,26 @@
+{
+  "name": "react-native-nitro-ota",
+  "version": "0.4.0",
+  "description": "A package to react-native-nitro-ota",
+  "homepage": "https://github.com/riteshshukla04/react-native-nitro-ota#readme",
+  "workspaces": [
+    "react-native-nitro-ota",
+    "NitroOtaExample"
+  ],
+  "bugs": {
+    "url": "https://github.com/riteshshukla04/react-native-nitro-ota/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/riteshshukla04/react-native-nitro-ota.git"
+  },
+  "license": "ISC",
+  "author": "Ritesh Shukla <riteshshukla2381@gmail.com> (https://github.com/riteshshukla04)",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "nitroota": "bun --cwd react-native-nitro-ota",
+    "specs": "bun nitroota specs",
+    "example": "bun --cwd NitroOtaExample"
+  }
+}
