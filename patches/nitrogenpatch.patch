@@ -1,0 +1,23 @@
+
+diff --git a/react-native-nitro-ota/nitrogen/generated/ios/c++/HybridNitroOtaSpecSwift.hpp b/react-native-nitro-ota/nitrogen/generated/ios/c++/HybridNitroOtaSpecSwift.hpp
+index 921a50f..705a20a 100644
+--- a/react-native-nitro-ota/nitrogen/generated/ios/c++/HybridNitroOtaSpecSwift.hpp
++++ b/react-native-nitro-ota/nitrogen/generated/ios/c++/HybridNitroOtaSpecSwift.hpp
+@@ -35,9 +35,14 @@ namespace margelo::nitro::nitroota {
+   class HybridNitroOtaSpecSwift: public virtual HybridNitroOtaSpec {
+   public:
+     // Constructor from a Swift instance
+-    explicit HybridNitroOtaSpecSwift(const NitroOta::HybridNitroOtaSpec_cxx& swiftPart):
+-      HybridObject(HybridNitroOtaSpec::TAG),
+-      _swiftPart(swiftPart) { }
++    explicit HybridNitroOtaSpecSwift(NitroOta::HybridNitroOtaSpec_cxx swiftPart)
++      : HybridObject(HybridNitroOtaSpec::TAG)
++      #if DEBUG
++            , _swiftPart(std::move(swiftPart))
++      #else
++            , _swiftPart(swiftPart)
++      #endif
++    { }
+ 
+   public:
+     // Get the Swift part
