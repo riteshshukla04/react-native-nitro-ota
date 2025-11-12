@@ -46,9 +46,9 @@ namespace margelo::nitro::nitroota {
   
 
   // Methods
-  std::shared_ptr<Promise<bool>> JHybridNitroOtaSpec::checkForUpdates(const std::string& versionCheckUrl) {
-    static const auto method = javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* versionCheckUrl */)>("checkForUpdates");
-    auto __result = method(_javaPart, jni::make_jstring(versionCheckUrl));
+  std::shared_ptr<Promise<bool>> JHybridNitroOtaSpec::checkForUpdates(const std::string& _versionCheckUrl) {
+    static const auto method = javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* _versionCheckUrl */)>("checkForUpdates");
+    auto __result = method(_javaPart, jni::make_jstring(_versionCheckUrl));
     return [&]() {
       auto __promise = Promise<bool>::create();
       __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {
@@ -62,9 +62,9 @@ namespace margelo::nitro::nitroota {
       return __promise;
     }();
   }
-  std::shared_ptr<Promise<std::string>> JHybridNitroOtaSpec::downloadZipFromUrl(const std::string& downloadUrl) {
-    static const auto method = javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* downloadUrl */)>("downloadZipFromUrl");
-    auto __result = method(_javaPart, jni::make_jstring(downloadUrl));
+  std::shared_ptr<Promise<std::string>> JHybridNitroOtaSpec::downloadZipFromUrl(const std::string& _downloadUrl) {
+    static const auto method = javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<jni::JString> /* _downloadUrl */)>("downloadZipFromUrl");
+    auto __result = method(_javaPart, jni::make_jstring(_downloadUrl));
     return [&]() {
       auto __promise = Promise<std::string>::create();
       __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& __boxedResult) {

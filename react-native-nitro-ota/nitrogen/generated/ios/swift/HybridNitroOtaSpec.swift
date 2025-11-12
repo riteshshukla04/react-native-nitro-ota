@@ -15,8 +15,8 @@ public protocol HybridNitroOtaSpec_protocol: HybridObject {
   
 
   // Methods
-  func checkForUpdates(versionCheckUrl: String) throws -> Promise<Bool>
-  func downloadZipFromUrl(downloadUrl: String) throws -> Promise<String>
+  func checkForUpdates(_versionCheckUrl: String) throws -> Promise<Bool>
+  func downloadZipFromUrl(_downloadUrl: String) throws -> Promise<String>
   func getStoredOtaVersion() throws -> String?
   func getStoredUnzippedPath() throws -> String?
   func reloadApp() throws -> Void

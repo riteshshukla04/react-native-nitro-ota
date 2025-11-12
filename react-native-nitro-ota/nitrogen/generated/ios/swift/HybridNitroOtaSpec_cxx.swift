@@ -119,9 +119,9 @@ open class HybridNitroOtaSpec_cxx {
 
   // Methods
   @inline(__always)
-  public final func checkForUpdates(versionCheckUrl: std.string) -> bridge.Result_std__shared_ptr_Promise_bool___ {
+  public final func checkForUpdates(_versionCheckUrl: std.string) -> bridge.Result_std__shared_ptr_Promise_bool___ {
     do {
-      let __result = try self.__implementation.checkForUpdates(versionCheckUrl: String(versionCheckUrl))
+      let __result = try self.__implementation.checkForUpdates(_versionCheckUrl: String(_versionCheckUrl))
       let __resultCpp = { () -> bridge.std__shared_ptr_Promise_bool__ in
         let __promise = bridge.create_std__shared_ptr_Promise_bool__()
         let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_bool__(__promise)
@@ -138,9 +138,9 @@ open class HybridNitroOtaSpec_cxx {
   }
   
   @inline(__always)
-  public final func downloadZipFromUrl(downloadUrl: std.string) -> bridge.Result_std__shared_ptr_Promise_std__string___ {
+  public final func downloadZipFromUrl(_downloadUrl: std.string) -> bridge.Result_std__shared_ptr_Promise_std__string___ {
     do {
-      let __result = try self.__implementation.downloadZipFromUrl(downloadUrl: String(downloadUrl))
+      let __result = try self.__implementation.downloadZipFromUrl(_downloadUrl: String(_downloadUrl))
       let __resultCpp = { () -> bridge.std__shared_ptr_Promise_std__string__ in
         let __promise = bridge.create_std__shared_ptr_Promise_std__string__()
         let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_std__string__(__promise)

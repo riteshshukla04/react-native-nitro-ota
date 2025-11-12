@@ -5,7 +5,7 @@
   "homepage": "https://github.com/riteshshukla04/react-native-nitro-ota#readme",
   "workspaces": [
     "react-native-nitro-ota",
-    "NitroOtaExample"
+    "example"
   ],
   "bugs": {
     "url": "https://github.com/riteshshukla04/react-native-nitro-ota/issues"

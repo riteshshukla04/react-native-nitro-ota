@@ -48,11 +48,11 @@ abstract class HybridNitroOtaSpec: HybridObject() {
   // Methods
   @DoNotStrip
   @Keep
-  abstract fun checkForUpdates(versionCheckUrl: String): Promise<Boolean>
+  abstract fun checkForUpdates(_versionCheckUrl: String): Promise<Boolean>
   
   @DoNotStrip
   @Keep
-  abstract fun downloadZipFromUrl(downloadUrl: String): Promise<String>
+  abstract fun downloadZipFromUrl(_downloadUrl: String): Promise<String>
   
   @DoNotStrip
   @Keep

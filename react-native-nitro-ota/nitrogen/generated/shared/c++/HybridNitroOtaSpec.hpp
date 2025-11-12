@@ -50,8 +50,8 @@ namespace margelo::nitro::nitroota {
 
     public:
       // Methods
-      virtual std::shared_ptr<Promise<bool>> checkForUpdates(const std::string& versionCheckUrl) = 0;
-      virtual std::shared_ptr<Promise<std::string>> downloadZipFromUrl(const std::string& downloadUrl) = 0;
+      virtual std::shared_ptr<Promise<bool>> checkForUpdates(const std::string& _versionCheckUrl) = 0;
+      virtual std::shared_ptr<Promise<std::string>> downloadZipFromUrl(const std::string& _downloadUrl) = 0;
       virtual std::optional<std::string> getStoredOtaVersion() = 0;
       virtual std::optional<std::string> getStoredUnzippedPath() = 0;
       virtual void reloadApp() = 0;

@@ -1,6 +1,6 @@
 {
   "name": "react-native-nitro-ota",
-  "version": "0.0.1",
+  "version": "0.4.0",
   "description": "react-native-nitro-ota",
   "main": "lib/index",
   "module": "lib/index",

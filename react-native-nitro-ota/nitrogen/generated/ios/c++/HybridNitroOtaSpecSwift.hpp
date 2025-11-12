@@ -62,16 +62,16 @@ namespace margelo::nitro::nitroota {
 
   public:
     // Methods
-    inline std::shared_ptr<Promise<bool>> checkForUpdates(const std::string& versionCheckUrl) override {
-      auto __result = _swiftPart.checkForUpdates(versionCheckUrl);
+    inline std::shared_ptr<Promise<bool>> checkForUpdates(const std::string& _versionCheckUrl) override {
+      auto __result = _swiftPart.checkForUpdates(_versionCheckUrl);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline std::shared_ptr<Promise<std::string>> downloadZipFromUrl(const std::string& downloadUrl) override {
-      auto __result = _swiftPart.downloadZipFromUrl(downloadUrl);
+    inline std::shared_ptr<Promise<std::string>> downloadZipFromUrl(const std::string& _downloadUrl) override {
+      auto __result = _swiftPart.downloadZipFromUrl(_downloadUrl);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
