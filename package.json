@@ -21,6 +21,6 @@
   "scripts": {
     "nitroota": "bun --cwd react-native-nitro-ota",
     "specs": "bun nitroota specs",
-    "example": "bun --cwd NitroOtaExample"
+    "example": "bun --cwd example"
   }
 }
