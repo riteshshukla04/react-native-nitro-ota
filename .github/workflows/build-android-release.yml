@@ -16,6 +16,9 @@ jobs:
 
       - name: Install npm dependencies (bun)
         run: bun install
+
+      - name: Install example dependencies
+        run: bun install
         working-directory: example
 
       - name: Setup JDK 17
@@ -33,9 +36,12 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
+      - name: Clean Gradle Build
+        working-directory: example/android
+        run: ./gradlew clean --no-daemon
       - name: Run Gradle Build for example/android/
         working-directory: example/android
-        run: ./gradlew assembleRelease --no-daemon
+        run: ./gradlew assembleRelease --no-daemon --build-cache
 
       # Gradle cache doesn't like daemons
       - name: Stop Gradle Daemon
