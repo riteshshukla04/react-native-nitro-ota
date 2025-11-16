@@ -1,42 +1,42 @@
 // TODO: Export all HybridObjects here for the user
-import { NitroModules } from 'react-native-nitro-modules';
-import type { NitroOta } from './specs/NitroOta.nitro';
+import { NitroModules } from 'react-native-nitro-modules'
+import type { NitroOta } from './specs/NitroOta.nitro'
 
 const NitroOtaHybridObject =
-  NitroModules.createHybridObject<NitroOta>('NitroOta');
+  NitroModules.createHybridObject<NitroOta>('NitroOta')
 
 export function checkForOTAUpdates(versionCheckUrl: string): Promise<boolean> {
-  console.log('checkForUpdates', versionCheckUrl);
-  return NitroOtaHybridObject.checkForUpdates(versionCheckUrl);
+  console.log('checkForUpdates', versionCheckUrl)
+  return NitroOtaHybridObject.checkForUpdates(versionCheckUrl)
 }
 
 export function downloadZipFromUrl(downloadUrl: string): Promise<string> {
-  console.log('downloadZipFromUrl', downloadUrl);
-  return NitroOtaHybridObject.downloadZipFromUrl(downloadUrl);
+  console.log('downloadZipFromUrl', downloadUrl)
+  return NitroOtaHybridObject.downloadZipFromUrl(downloadUrl)
 }
 
 export function getStoredOtaVersion(): string | null {
-  return NitroOtaHybridObject.getStoredOtaVersion();
+  return NitroOtaHybridObject.getStoredOtaVersion()
 }
 
 export function getStoredUnzippedPath(): string | null {
-  return NitroOtaHybridObject.getStoredUnzippedPath();
+  return NitroOtaHybridObject.getStoredUnzippedPath()
 }
 
 export function reloadApp(): void {
-  NitroOtaHybridObject.reloadApp();
+  NitroOtaHybridObject.reloadApp()
 }
 
 /**
  * OTA Update Manager class for handling over-the-air updates
  */
 export class OTAUpdateManager {
-  private downloadUrl: string;
-  private versionCheckUrl?: string;
+  private downloadUrl: string
+  private versionCheckUrl?: string
 
   constructor(downloadUrl: string, versionCheckUrl?: string) {
-    this.downloadUrl = downloadUrl;
-    this.versionCheckUrl = versionCheckUrl;
+    this.downloadUrl = downloadUrl
+    this.versionCheckUrl = versionCheckUrl
   }
 
   /**
@@ -44,14 +44,14 @@ export class OTAUpdateManager {
    */
   async checkForUpdates(): Promise<boolean> {
     try {
-      const urlToCheck = this.versionCheckUrl || this.downloadUrl;
+      const urlToCheck = this.versionCheckUrl || this.downloadUrl
       console.log(
         `OTA: Checking for updates using version check URL: ${urlToCheck}`
-      );
-      return await checkForOTAUpdates(urlToCheck);
+      )
+      return await checkForOTAUpdates(urlToCheck)
     } catch (error) {
-      console.error('OTA: Failed to check for updates:', error);
-      throw error;
+      console.error('OTA: Failed to check for updates:', error)
+      throw error
     }
   }
 
@@ -60,13 +60,13 @@ export class OTAUpdateManager {
    */
   async downloadUpdate(): Promise<string> {
     try {
-      console.log(`OTA: Downloading update from ${this.downloadUrl}`);
-      const path = await downloadZipFromUrl(this.downloadUrl);
-      console.log(`OTA: Update downloaded to: ${path}`);
-      return path;
+      console.log(`OTA: Downloading update from ${this.downloadUrl}`)
+      const path = await downloadZipFromUrl(this.downloadUrl)
+      console.log(`OTA: Update downloaded to: ${path}`)
+      return path
     } catch (error) {
-      console.error('OTA: Failed to download update:', error);
-      throw error;
+      console.error('OTA: Failed to download update:', error)
+      throw error
     }
   }
 
@@ -74,26 +74,26 @@ export class OTAUpdateManager {
    * Gets the current stored OTA version
    */
   getVersion(): string | null {
-    const version = getStoredOtaVersion();
-    console.log(`OTA: Current version: ${version}`);
-    return version;
+    const version = getStoredOtaVersion()
+    console.log(`OTA: Current version: ${version}`)
+    return version
   }
 
   /**
    * Gets the stored unzipped path
    */
   getUnzippedPath(): string | null {
-    const path = getStoredUnzippedPath();
-    console.log(`OTA: Unzipped path: ${path}`);
-    return path;
+    const path = getStoredUnzippedPath()
+    console.log(`OTA: Unzipped path: ${path}`)
+    return path
   }
 
   /**
    * Reloads the app
    */
   reloadApp(): void {
-    NitroOtaHybridObject.reloadApp();
+    NitroOtaHybridObject.reloadApp()
   }
 }
 
-export { githubOTA } from './githubUtils';
+export { githubOTA } from './githubUtils'

@@ -1,0 +1,27 @@
+name: Build Android
+
+on:
+  pull_request:
+    
+jobs:
+  build:
+    name: Build Android Example App
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install npm dependencies (bun)
+        run: bun install
+
+      - name: Lint CI
+        working-directory: react-native-nitro-ota
+        run: bun run lint-ci
+
+      - name: Typecheck
+        working-directory: react-native-nitro-ota
+        run: bun tsc --noEmit
+
+      - name: Nitrogen Specs
+        working-directory: react-native-nitro-ota
+        run: bun run specs
