@@ -37,7 +37,7 @@ namespace margelo::nitro::nitroota {
     // Constructor from a Swift instance
     explicit HybridNitroOtaSpecSwift(const NitroOta::HybridNitroOtaSpec_cxx& swiftPart):
       HybridObject(HybridNitroOtaSpec::TAG),
-      _swiftPart(std::move(swiftPart)) { }
+      _swiftPart(swiftPart) { }
 
   public:
     // Get the Swift part
