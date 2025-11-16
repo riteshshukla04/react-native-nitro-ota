@@ -1,4 +1,4 @@
-name: Build Android
+name: Check Types and Lint and Nitrogen Specs
 
 on:
   pull_request:
