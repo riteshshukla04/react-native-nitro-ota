@@ -1,0 +1,57 @@
+name: Build iOS
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+env:
+  USE_CCACHE: 1
+
+jobs:
+  build:
+    name: Build iOS Example App (Debug)
+    runs-on: macOS-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install npm dependencies (bun)
+        run: bun install
+        working-directory: example
+
+
+      - name: Setup Ruby (bundle)
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.2
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: 16.4
+
+      - name: Install Pods
+        working-directory: example/ios
+        run: |
+          bundle install 
+          RCT_USE_RN_DEP=1 RCT_USE_PREBUILT_RNCORE=1 bundle exec pod install
+
+      - name: Show versions
+        run: |
+          xcodebuild -version
+          xcrun simctl list runtimes
+
+
+      - name: Build App
+        working-directory: example/ios
+        run: "set -o pipefail && xcodebuild \
+          CC=clang CPLUSPLUS=clang++ LD=clang LDPLUSPLUS=clang++ \
+          -derivedDataPath build -UseModernBuildSystem=YES \
+          -workspace example.xcworkspace \
+          -scheme example \
+          -sdk iphonesimulator \
+          -configuration Debug \
+          -destination 'platform=iOS Simulator,name=iPhone 16' \
+          build \
+          CODE_SIGNING_ALLOWED=NO"

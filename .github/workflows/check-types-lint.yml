@@ -1,0 +1,27 @@
+name: Check Types and Lint and Nitrogen Specs
+
+on:
+  pull_request:
+    
+jobs:
+  build:
+    name: Check Types and Lint and Nitrogen Specs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install npm dependencies (bun)
+        run: bun install
+
+      - name: Lint CI
+        working-directory: react-native-nitro-ota
+        run: bun run lint
+
+      - name: Typecheck
+        working-directory: react-native-nitro-ota
+        run: bun tsc --noEmit
+
+      - name: Nitrogen Specs
+        working-directory: react-native-nitro-ota
+        run: bun run specs

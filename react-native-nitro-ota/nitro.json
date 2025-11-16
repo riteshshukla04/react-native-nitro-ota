@@ -1,0 +1,24 @@
+{
+  "$schema": "https://nitro.margelo.com/nitro.schema.json",
+  "cxxNamespace": [
+    "nitroota"
+  ],
+  "ios": {
+    "iosModuleName": "NitroOta"
+  },
+  "android": {
+    "androidNamespace": [
+      "nitroota"
+    ],
+    "androidCxxLibName": "NitroOta"
+  },
+  "autolinking": {
+    "NitroOta": {
+      "swift": "NitroOta",
+      "kotlin": "NitroOta"
+    }
+  },
+  "ignorePaths": [
+    "**/node_modules"
+  ]
+}
