@@ -87,10 +87,3 @@ android/generated
 **/android/build/
 **/ios/build/
 **/ios/Pods/
-**/android/app/libs/
-**/android/app/src/main/assets/
-**/android/app/src/main/res/
-**/android/app/src/main/res/values/
-**/android/app/src/main/res/values-v21/
-**/android/app/src/main/res/values-v22/
-**/android/app/src/main/res/values-v23/
