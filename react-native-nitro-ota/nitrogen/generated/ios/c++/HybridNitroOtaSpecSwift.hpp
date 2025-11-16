@@ -35,14 +35,9 @@ namespace margelo::nitro::nitroota {
   class HybridNitroOtaSpecSwift: public virtual HybridNitroOtaSpec {
   public:
     // Constructor from a Swift instance
-    explicit HybridNitroOtaSpecSwift(NitroOta::HybridNitroOtaSpec_cxx swiftPart)
-      : HybridObject(HybridNitroOtaSpec::TAG)
-      #if DEBUG
-            , _swiftPart(std::move(swiftPart))
-      #else
-            , _swiftPart(swiftPart)
-      #endif
-    { }
+    explicit HybridNitroOtaSpecSwift(const NitroOta::HybridNitroOtaSpec_cxx& swiftPart):
+      HybridObject(HybridNitroOtaSpec::TAG),
+      _swiftPart(std::move(swiftPart)) { }
 
   public:
     // Get the Swift part
