@@ -1,0 +1,26 @@
+diff --git a/react-native-nitro-ota/nitrogen/generated/ios/NitroOta-Swift-Cxx-Bridge.cpp b/react-native-nitro-ota/nitrogen/generated/ios/NitroOta-Swift-Cxx-Bridge.cpp
+index c1e95dc..6a5fb3b 100644
+--- a/react-native-nitro-ota/nitrogen/generated/ios/NitroOta-Swift-Cxx-Bridge.cpp
++++ b/react-native-nitro-ota/nitrogen/generated/ios/NitroOta-Swift-Cxx-Bridge.cpp
+@@ -40,7 +40,7 @@ namespace margelo::nitro::nitroota::bridge::swift {
+   // pragma MARK: std::shared_ptr<HybridNitroOtaSpec>
+   std::shared_ptr<HybridNitroOtaSpec> create_std__shared_ptr_HybridNitroOtaSpec_(void* NON_NULL swiftUnsafePointer) noexcept {
+     NitroOta::HybridNitroOtaSpec_cxx swiftPart = NitroOta::HybridNitroOtaSpec_cxx::fromUnsafe(swiftUnsafePointer);
+-    return std::make_shared<margelo::nitro::nitroota::HybridNitroOtaSpecSwift>(swiftPart);
++    return std::make_shared<margelo::nitro::nitroota::HybridNitroOtaSpecSwift>(std::move(swiftPart));
+   }
+   void* NON_NULL get_std__shared_ptr_HybridNitroOtaSpec_(std__shared_ptr_HybridNitroOtaSpec_ cppType) {
+     std::shared_ptr<margelo::nitro::nitroota::HybridNitroOtaSpecSwift> swiftWrapper = std::dynamic_pointer_cast<margelo::nitro::nitroota::HybridNitroOtaSpecSwift>(cppType);
+diff --git a/react-native-nitro-ota/nitrogen/generated/ios/c++/HybridNitroOtaSpecSwift.hpp b/react-native-nitro-ota/nitrogen/generated/ios/c++/HybridNitroOtaSpecSwift.hpp
+index 921a50f..4979c42 100644
+--- a/react-native-nitro-ota/nitrogen/generated/ios/c++/HybridNitroOtaSpecSwift.hpp
++++ b/react-native-nitro-ota/nitrogen/generated/ios/c++/HybridNitroOtaSpecSwift.hpp
+@@ -37,7 +37,7 @@ namespace margelo::nitro::nitroota {
+     // Constructor from a Swift instance
+     explicit HybridNitroOtaSpecSwift(const NitroOta::HybridNitroOtaSpec_cxx& swiftPart):
+       HybridObject(HybridNitroOtaSpec::TAG),
+-      _swiftPart(swiftPart) { }
++      _swiftPart(std::move(swiftPart)) { }
+ 
+   public:
+     // Get the Swift part
