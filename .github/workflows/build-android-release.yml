@@ -8,7 +8,7 @@ on:
     
 jobs:
   build:
-    name: Build Android Example App
+    name: Build Android Example App (Release)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
