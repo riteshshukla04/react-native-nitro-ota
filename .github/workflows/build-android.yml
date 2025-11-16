@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     name: Build Android Example App (Debug)
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
