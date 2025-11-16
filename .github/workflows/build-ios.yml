@@ -37,6 +37,12 @@ jobs:
           bundle install 
           RCT_USE_RN_DEP=1 RCT_USE_PREBUILT_RNCORE=1 bundle exec pod install
 
+      - name: Show versions
+        run: |
+          xcodebuild -version
+          xcrun simctl list runtimes
+
+
       - name: Build App
         working-directory: example/ios
         run: "set -o pipefail && xcodebuild \
