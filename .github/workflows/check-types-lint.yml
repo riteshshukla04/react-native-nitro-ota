@@ -16,7 +16,7 @@ jobs:
 
       - name: Lint CI
         working-directory: react-native-nitro-ota
-        run: bun run lint-ci
+        run: bun run lint
 
       - name: Typecheck
         working-directory: react-native-nitro-ota
