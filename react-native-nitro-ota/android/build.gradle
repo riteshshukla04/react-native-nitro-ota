@@ -137,5 +137,7 @@ dependencies {
 
   // Add a dependency on NitroModules
   implementation project(":react-native-nitro-modules")
+  implementation 'com.jakewharton:process-phoenix:3.0.0'
+
 }
 
