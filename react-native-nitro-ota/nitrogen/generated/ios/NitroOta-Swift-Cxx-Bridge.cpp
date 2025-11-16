@@ -40,12 +40,11 @@ namespace margelo::nitro::nitroota::bridge::swift {
   // pragma MARK: std::shared_ptr<HybridNitroOtaSpec>
   std::shared_ptr<HybridNitroOtaSpec> create_std__shared_ptr_HybridNitroOtaSpec_(void* NON_NULL swiftUnsafePointer) noexcept {
     NitroOta::HybridNitroOtaSpec_cxx swiftPart = NitroOta::HybridNitroOtaSpec_cxx::fromUnsafe(swiftUnsafePointer);
-    if(DEBUG){
-      return std::make_shared<margelo::nitro::nitroota::HybridNitroOtaSpecSwift>(std::move(swiftPart));
-    }
-    else{
-      return std::make_shared<margelo::nitro::nitroota::HybridNitroOtaSpecSwift>(swiftPart);
-    }
+    #ifdef NITRO_DEBUG
+        return std::make_shared<margelo::nitro::nitroota::HybridNitroOtaSpecSwift>(std::move(swiftPart));
+    #else
+        return std::make_shared<margelo::nitro::nitroota::HybridNitroOtaSpecSwift>(swiftPart);
+    #endif
   }
   void* NON_NULL get_std__shared_ptr_HybridNitroOtaSpec_(std__shared_ptr_HybridNitroOtaSpec_ cppType) {
     std::shared_ptr<margelo::nitro::nitroota::HybridNitroOtaSpecSwift> swiftWrapper = std::dynamic_pointer_cast<margelo::nitro::nitroota::HybridNitroOtaSpecSwift>(cppType);
@@ -59,3 +58,4 @@ namespace margelo::nitro::nitroota::bridge::swift {
   }
 
 } // namespace margelo::nitro::nitroota::bridge::swift
+
