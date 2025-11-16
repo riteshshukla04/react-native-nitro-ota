@@ -28,20 +28,11 @@ jobs:
           java-version: 17
           java-package: jdk
 
-      - name: Restore Gradle cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-      - name: Clean Gradle Build
-        working-directory: example/android
-        run: ./gradlew clean --no-daemon
+
+   
       - name: Run Gradle Build for example/android/
         working-directory: example/android
-        run: ./gradlew assembleRelease --no-daemon --build-cache
+        run: ./gradlew assembleRelease --no-daemon 
 
       # Gradle cache doesn't like daemons
       - name: Stop Gradle Daemon
