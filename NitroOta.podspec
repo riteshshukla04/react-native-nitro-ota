@@ -15,13 +15,15 @@ Pod::Spec.new do |s|
 
 
   s.source_files = [
-    "ios/**/*.{swift}",
-    "ios/**/*.{m,mm}",
+    "ios/**/*.{swift,h,m,mm}",
     "cpp/**/*.{hpp,cpp}",
   ]
 
+  s.public_header_files = "ios/**/*.h"
+
   s.dependency 'React-jsi'
   s.dependency 'React-callinvoker'
+  s.dependency 'React-Core'
   s.dependency 'SSZipArchive'
 
   load 'nitrogen/generated/ios/NitroOta+autolinking.rb'

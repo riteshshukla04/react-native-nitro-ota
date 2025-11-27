@@ -19,6 +19,11 @@ if linkage != nil
 end
 target 'NitroOtaExample' do
   config = use_native_modules!
+  linkage = 'static'
+  if linkage != nil
+    Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
+    use_frameworks! :linkage => linkage.to_sym
+  end
 
   use_react_native!(
     :path => config[:reactNativePath],

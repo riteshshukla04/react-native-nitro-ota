@@ -8,7 +8,7 @@
 import Foundation
 import NitroModules
 import SSZipArchive
-import React
+
 
 // MARK: - ZipUtils
 
@@ -506,14 +506,14 @@ class NitroOta: HybridNitroOtaSpec {
     }
     
   func reloadApp() throws {
-    let reload={
-      RCTTriggerReloadCommandListeners("NITRO OTA UPDATE")
+    let reload = {
+      NitroOtaBridge.triggerReload(withReason: "NITRO OTA UPDATE")
     }
-    if (Thread.isMainThread) {
+    if Thread.isMainThread {
       reload()
-    } else{
+    } else {
       DispatchQueue.main.sync {
-              reload()
+        reload()
       }
     }
   }
