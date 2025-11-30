@@ -77,8 +77,22 @@ class OtaManager(
     private fun findAndRenameContentFolder(unzipDir: File): File? {
         val files = unzipDir.listFiles()
         if (files != null) {
+            // First, check if ANDROID_BUNDLE_NAME exists directly in unzipDir
+            val bundleFile = File(unzipDir, ANDROID_BUNDLE_NAME)
+            if (bundleFile.exists() && bundleFile.isFile) {
+                Log.d("OtaManager", "Found $ANDROID_BUNDLE_NAME directly in unzip directory, no renaming needed")
+                return unzipDir
+            }
+
             for (file in files) {
                 if (file.isDirectory) {
+                    // Check if ANDROID_BUNDLE_NAME exists in this directory
+                    val bundleFileInDir = File(file, ANDROID_BUNDLE_NAME)
+                    if (bundleFileInDir.exists() && bundleFileInDir.isFile) {
+                        Log.d("OtaManager", "Found $ANDROID_BUNDLE_NAME in directory '${file.name}', no renaming needed")
+                        return file
+                    }
+
                     // Found a directory, rename it to "bundles"
                     val bundlesDir = File(unzipDir, "bundles")
                     val renamed = file.renameTo(bundlesDir)

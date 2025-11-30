@@ -269,12 +269,26 @@ class OtaManager {
 
     private func findAndRenameContentFolder(unzipDir: URL) -> URL? {
         do {
+            // First, check if bundle file exists directly in unzipDir
+            let bundleFile = unzipDir.appendingPathComponent(androidBundleName)
+            if FileManager.default.fileExists(atPath: bundleFile.path) {
+                print("OtaManager: Found \(androidBundleName) directly in unzip directory, no renaming needed")
+                return unzipDir
+            }
+
             let contents = try FileManager.default.contentsOfDirectory(at: unzipDir, includingPropertiesForKeys: [.isDirectoryKey], options: [])
 
             for item in contents {
                 do {
                     let resourceValues = try item.resourceValues(forKeys: [.isDirectoryKey])
                     if resourceValues.isDirectory ?? false {
+                        // Check if bundle file exists in this directory
+                        let bundleFileInDir = item.appendingPathComponent(androidBundleName)
+                        if FileManager.default.fileExists(atPath: bundleFileInDir.path) {
+                            print("OtaManager: Found \(androidBundleName) in directory '\(item.lastPathComponent)', no renaming needed")
+                            return item
+                        }
+
                         // Found a directory, rename it to "bundles"
                         let bundlesDir = unzipDir.appendingPathComponent("bundles")
                         try FileManager.default.moveItem(at: item, to: bundlesDir)
