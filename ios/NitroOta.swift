@@ -319,7 +319,7 @@ class OtaManager {
         }
     }
 
-    private func findAndRenameContentFolder(unzipDir: URL) -> (folder: URL, bundleName: String)? {
+    private func findContentFolder(unzipDir: URL) -> (folder: URL, bundleName: String)? {
         do {
             // First, check if any .jsbundle file exists directly in unzipDir
             if let bundleName = findBundleFile(in: unzipDir) {
@@ -335,30 +335,22 @@ class OtaManager {
                     if resourceValues.isDirectory ?? false {
                         // Check if any .jsbundle file exists in this directory
                         if let bundleNameInDir = findBundleFile(in: item) {
-                            print("OtaManager: Found \(bundleNameInDir) in directory '\(item.lastPathComponent)', no renaming needed")
+                            print("OtaManager: Found \(bundleNameInDir) in directory '\(item.lastPathComponent)'")
                             return (item, bundleNameInDir)
                         }
 
-                        // Found a directory without bundle, rename it to "bundles"
-                        let bundlesDir = unzipDir.appendingPathComponent("bundles")
-                        var resultDir: URL
-                        do {
-                            try FileManager.default.moveItem(at: item, to: bundlesDir)
-                            print("OtaManager: Renamed content folder from '\(item.lastPathComponent)' to 'bundles'")
-                            resultDir = bundlesDir
-                        } catch {
-                            print("OtaManager: Failed to rename folder '\(item.lastPathComponent)' to 'bundles': \(error.localizedDescription)")
-                            resultDir = item
-                        }
+                        // Found a directory, keep the original folder name to preserve Metro's asset paths
+                        print("OtaManager: Using content folder with original name: '\(item.lastPathComponent)'")
                         
-                        // Try to find bundle in the renamed/original directory
-                        if let bundleInResultDir = findBundleFile(in: resultDir) {
-                            return (resultDir, bundleInResultDir)
+                        // Try to find bundle in the directory
+                        if let bundleInResultDir = findBundleFile(in: item) {
+                            print("OtaManager: Found bundle \(bundleInResultDir) in directory '\(item.lastPathComponent)'")
+                            return (item, bundleInResultDir)
                         }
                         
                         // No bundle found, return with a default name
-                        print("OtaManager: No \(bundleExtension) file found in directory, using default name")
-                        return (resultDir, "main.jsbundle")
+                        print("OtaManager: No \(bundleExtension) file found in directory '\(item.lastPathComponent)', using default name")
+                        return (item, "main.jsbundle")
                     }
                 } catch {
                     print("OtaManager: Error checking item \(item.path): \(error.localizedDescription)")
@@ -436,7 +428,7 @@ class OtaManager {
             print("OtaManager: Unzip completed, directory contents: \(contents?.joined(separator: ", ") ?? "No items")")
 
             // Find the actual content folder and detect bundle name
-            let result = findAndRenameContentFolder(unzipDir: unzipDir)
+            let result = findContentFolder(unzipDir: unzipDir)
             if let (contentFolder, bundleName) = result {
                 print("OtaManager: Using content folder: \(contentFolder.path), bundle: \(bundleName)")
 

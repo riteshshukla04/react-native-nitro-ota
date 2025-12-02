@@ -84,14 +84,14 @@ class OtaManager(
     }
 
     /**
-     * Finds the content folder inside the unzip directory and renames it to "bundles".
+     * Finds the content folder inside the unzip directory, preserving the original folder name.
      * GitHub zips typically create a folder with the format "repo-name-branch".
      * Also detects the bundle file name automatically.
      *
      * @param unzipDir The directory where files were unzipped
      * @return A Pair of (content folder, bundle name) or null if not found
      */
-    private fun findAndRenameContentFolder(unzipDir: File): Pair<File, String>? {
+    private fun findContentFolder(unzipDir: File): Pair<File, String>? {
         val files = unzipDir.listFiles()
         if (files != null) {
             // First, check if any .bundle file exists directly in unzipDir
@@ -106,30 +106,23 @@ class OtaManager(
                     // Check if any .bundle file exists in this directory
                     val bundleNameInDir = findBundleFile(file)
                     if (bundleNameInDir != null) {
-                        Log.d("OtaManager", "Found $bundleNameInDir in directory '${file.name}', no renaming needed")
+                        Log.d("OtaManager", "Found $bundleNameInDir in directory '${file.name}'")
                         return Pair(file, bundleNameInDir)
                     }
 
-                    // Found a directory without bundle, rename it to "bundles"
-                    val bundlesDir = File(unzipDir, "bundles")
-                    val renamed = file.renameTo(bundlesDir)
-                    val resultDir = if (renamed) {
-                        Log.d("OtaManager", "Renamed content folder from '${file.name}' to 'bundles'")
-                        bundlesDir
-                    } else {
-                        Log.w("OtaManager", "Failed to rename folder '${file.name}' to 'bundles'")
-                        file // Return the original folder if rename failed
-                    }
+                    // Found a directory, keep the original folder name to preserve Metro's asset paths
+                    Log.d("OtaManager", "Using content folder with original name: '${file.name}'")
                     
-                    // Try to find bundle in the renamed/original directory
-                    val bundleInResultDir = findBundleFile(resultDir)
+                    // Try to find bundle in the directory
+                    val bundleInResultDir = findBundleFile(file)
                     if (bundleInResultDir != null) {
-                        return Pair(resultDir, bundleInResultDir)
+                        Log.d("OtaManager", "Found bundle ${bundleInResultDir} in directory '${file.name}'")
+                        return Pair(file, bundleInResultDir)
                     }
                     
                     // No bundle found, return with a default name
-                    Log.w("OtaManager", "No $BUNDLE_EXTENSION file found in directory, using default name")
-                    return Pair(resultDir, "index.android.bundle")
+                    Log.w("OtaManager", "No $BUNDLE_EXTENSION file found in directory '${file.name}', using default name")
+                    return Pair(file, "index.android.bundle")
                 }
             }
         }
@@ -173,7 +166,7 @@ class OtaManager(
             Log.d("OtaManager", "Unzip completed, directory contents: ${unzipDir.list()?.joinToString(", ") ?: "No items"}")
 
             // Find the actual content folder and detect bundle name
-            val result = findAndRenameContentFolder(unzipDir)
+            val result = findContentFolder(unzipDir)
             if (result != null) {
                 val (contentFolder, bundleName) = result
                 Log.d("OtaManager", "Using content folder: ${contentFolder.absolutePath}, bundle: $bundleName")
