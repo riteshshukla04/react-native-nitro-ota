@@ -8,7 +8,7 @@ import com.margelo.nitro.nitroota.utils.ZipUtils
 import java.io.File
 import android.util.Log
 
-private const val ANDROID_BUNDLE_NAME = "index.android.bundle"
+private const val BUNDLE_EXTENSION = ".bundle"
 
 
 class OtaManager(
@@ -68,41 +68,68 @@ class OtaManager(
     }
 
     /**
+     * Finds any .bundle file in a directory.
+     *
+     * @param directory The directory to search in
+     * @return The name of the bundle file if found, or null
+     */
+    private fun findBundleFile(directory: File): String? {
+        val files = directory.listFiles() ?: return null
+        for (file in files) {
+            if (file.isFile && file.name.endsWith(BUNDLE_EXTENSION)) {
+                return file.name
+            }
+        }
+        return null
+    }
+
+    /**
      * Finds the content folder inside the unzip directory and renames it to "bundles".
      * GitHub zips typically create a folder with the format "repo-name-branch".
+     * Also detects the bundle file name automatically.
      *
      * @param unzipDir The directory where files were unzipped
-     * @return The renamed content folder, or null if not found
+     * @return A Pair of (content folder, bundle name) or null if not found
      */
-    private fun findAndRenameContentFolder(unzipDir: File): File? {
+    private fun findAndRenameContentFolder(unzipDir: File): Pair<File, String>? {
         val files = unzipDir.listFiles()
         if (files != null) {
-            // First, check if ANDROID_BUNDLE_NAME exists directly in unzipDir
-            val bundleFile = File(unzipDir, ANDROID_BUNDLE_NAME)
-            if (bundleFile.exists() && bundleFile.isFile) {
-                Log.d("OtaManager", "Found $ANDROID_BUNDLE_NAME directly in unzip directory, no renaming needed")
-                return unzipDir
+            // First, check if any .bundle file exists directly in unzipDir
+            val bundleName = findBundleFile(unzipDir)
+            if (bundleName != null) {
+                Log.d("OtaManager", "Found $bundleName directly in unzip directory, no renaming needed")
+                return Pair(unzipDir, bundleName)
             }
 
             for (file in files) {
                 if (file.isDirectory) {
-                    // Check if ANDROID_BUNDLE_NAME exists in this directory
-                    val bundleFileInDir = File(file, ANDROID_BUNDLE_NAME)
-                    if (bundleFileInDir.exists() && bundleFileInDir.isFile) {
-                        Log.d("OtaManager", "Found $ANDROID_BUNDLE_NAME in directory '${file.name}', no renaming needed")
-                        return file
+                    // Check if any .bundle file exists in this directory
+                    val bundleNameInDir = findBundleFile(file)
+                    if (bundleNameInDir != null) {
+                        Log.d("OtaManager", "Found $bundleNameInDir in directory '${file.name}', no renaming needed")
+                        return Pair(file, bundleNameInDir)
                     }
 
-                    // Found a directory, rename it to "bundles"
+                    // Found a directory without bundle, rename it to "bundles"
                     val bundlesDir = File(unzipDir, "bundles")
                     val renamed = file.renameTo(bundlesDir)
-                    if (renamed) {
+                    val resultDir = if (renamed) {
                         Log.d("OtaManager", "Renamed content folder from '${file.name}' to 'bundles'")
-                        return bundlesDir
+                        bundlesDir
                     } else {
                         Log.w("OtaManager", "Failed to rename folder '${file.name}' to 'bundles'")
-                        return file // Return the original folder if rename failed
+                        file // Return the original folder if rename failed
                     }
+                    
+                    // Try to find bundle in the renamed/original directory
+                    val bundleInResultDir = findBundleFile(resultDir)
+                    if (bundleInResultDir != null) {
+                        return Pair(resultDir, bundleInResultDir)
+                    }
+                    
+                    // No bundle found, return with a default name
+                    Log.w("OtaManager", "No $BUNDLE_EXTENSION file found in directory, using default name")
+                    return Pair(resultDir, "index.android.bundle")
                 }
             }
         }
@@ -145,10 +172,11 @@ class OtaManager(
             ZipUtils.unzip(zipFile, unzipDir)
             Log.d("OtaManager", "Unzip completed, directory contents: ${unzipDir.list()?.joinToString(", ") ?: "No items"}")
 
-            // Find the actual content folder and rename it to "bundles"
-            val contentFolder = findAndRenameContentFolder(unzipDir)
-            if (contentFolder != null) {
-                Log.d("OtaManager", "Using content folder: ${contentFolder.absolutePath}")
+            // Find the actual content folder and detect bundle name
+            val result = findAndRenameContentFolder(unzipDir)
+            if (result != null) {
+                val (contentFolder, bundleName) = result
+                Log.d("OtaManager", "Using content folder: ${contentFolder.absolutePath}, bundle: $bundleName")
 
                 // Read version from provided URL or fallback to ota.version file
                 if (versionCheckUrl != null) {
@@ -168,12 +196,12 @@ class OtaManager(
                 }
 
                 // Store the content folder path in shared preferences
-                preferences.setOtaUnzippedPath(contentFolder.absolutePath + "/" + ANDROID_BUNDLE_NAME)
+                preferences.setOtaUnzippedPath(contentFolder.absolutePath + "/" + bundleName)
                 Log.d("OtaManager", "Stored content folder path in SharedPreferences: ${contentFolder.absolutePath}")
 
-                // Store the Android bundle name in shared preferences
-                preferences.setOtaBundleName(ANDROID_BUNDLE_NAME)
-                Log.d("OtaManager", "Stored Android bundle name in SharedPreferences: $ANDROID_BUNDLE_NAME")
+                // Store the detected bundle name in shared preferences
+                preferences.setOtaBundleName(bundleName)
+                Log.d("OtaManager", "Stored bundle name in SharedPreferences: $bundleName")
 
                 // Clean up old OTA directories, keeping only the 2 most recent
                 cleanupOldOtaDirectories()
@@ -181,8 +209,12 @@ class OtaManager(
                 return contentFolder.absolutePath
             } else {
                 Log.w("OtaManager", "No content folder found in unzip directory")
+                
+                // Try to find bundle directly in unzip directory as fallback
+                val fallbackBundleName = findBundleFile(unzipDir) ?: "index.android.bundle"
+                
                 // Fallback to unzip directory
-                preferences.setOtaUnzippedPath(unzipDir.absolutePath)
+                preferences.setOtaUnzippedPath(unzipDir.absolutePath + "/" + fallbackBundleName)
                 Log.d("OtaManager", "Stored fallback unzip path in SharedPreferences: ${unzipDir.absolutePath}")
 
                 // Try to read version from fallback directory if versionCheckUrl provided
@@ -196,9 +228,9 @@ class OtaManager(
                     }
                 }
 
-                // Store the Android bundle name in shared preferences
-                preferences.setOtaBundleName(ANDROID_BUNDLE_NAME)
-                Log.d("OtaManager", "Stored Android bundle name in SharedPreferences: $ANDROID_BUNDLE_NAME")
+                // Store the detected bundle name in shared preferences
+                preferences.setOtaBundleName(fallbackBundleName)
+                Log.d("OtaManager", "Stored bundle name in SharedPreferences: $fallbackBundleName")
 
                 // Clean up old OTA directories, keeping only the 2 most recent
                 cleanupOldOtaDirectories()

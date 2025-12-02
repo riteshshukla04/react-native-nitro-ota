@@ -95,16 +95,54 @@ class DownloadManager {
     }
 
     func downloadText(from url: URL) throws -> String {
-        let data = try Data(contentsOf: url)
+        var resultData: Data?
+        var resultError: Error?
+        
+        let semaphore = DispatchSemaphore(value: 0)
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("text/plain, */*", forHTTPHeaderField: "Accept")
+        request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+        
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                resultError = error
+            } else if let httpResponse = response as? HTTPURLResponse {
+                if httpResponse.statusCode >= 200 && httpResponse.statusCode < 300 {
+                    resultData = data
+                } else {
+                    resultError = NSError(
+                        domain: "DownloadManager",
+                        code: httpResponse.statusCode,
+                        userInfo: [NSLocalizedDescriptionKey: "HTTP error: \(httpResponse.statusCode)"]
+                    )
+                }
+            } else {
+                resultData = data
+            }
+            semaphore.signal()
+        }
+        task.resume()
+        semaphore.wait()
+        
+        if let error = resultError {
+            throw error
+        }
+        
+        guard let data = resultData else {
+            throw NSError(domain: "DownloadManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "No data received"])
+        }
+        
         guard let text = String(data: data, encoding: .utf8) else {
-            throw NSError(domain: "DownloadManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to decode text data"])
+            throw NSError(domain: "DownloadManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to decode text data as UTF-8"])
         }
         return text
     }
 
     func downloadText(from urlString: String) throws -> String {
         guard let url = URL(string: urlString) else {
-            throw NSError(domain: "DownloadManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL"])
+            throw NSError(domain: "DownloadManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid URL: \(urlString)"])
         }
         return try downloadText(from: url)
     }
@@ -216,9 +254,23 @@ class PreferencesUtils {
 class OtaManager {
     private let downloadManager = DownloadManager()
     private let preferences = PreferencesUtils()
-    private let androidBundleName = "main.jsbundle"
+    private let bundleExtension = ".jsbundle"
 
     // MARK: - Private helper methods
+    
+    private func findBundleFile(in directory: URL) -> String? {
+        do {
+            let contents = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil, options: [])
+            for item in contents {
+                if item.pathExtension == "jsbundle" {
+                    return item.lastPathComponent
+                }
+            }
+        } catch {
+            print("OtaManager: Error searching for bundle file: \(error.localizedDescription)")
+        }
+        return nil
+    }
 
     private func cleanupOldOtaDirectories() {
         do {
@@ -267,13 +319,12 @@ class OtaManager {
         }
     }
 
-    private func findAndRenameContentFolder(unzipDir: URL) -> URL? {
+    private func findAndRenameContentFolder(unzipDir: URL) -> (folder: URL, bundleName: String)? {
         do {
-            // First, check if bundle file exists directly in unzipDir
-            let bundleFile = unzipDir.appendingPathComponent(androidBundleName)
-            if FileManager.default.fileExists(atPath: bundleFile.path) {
-                print("OtaManager: Found \(androidBundleName) directly in unzip directory, no renaming needed")
-                return unzipDir
+            // First, check if any .jsbundle file exists directly in unzipDir
+            if let bundleName = findBundleFile(in: unzipDir) {
+                print("OtaManager: Found \(bundleName) directly in unzip directory, no renaming needed")
+                return (unzipDir, bundleName)
             }
 
             let contents = try FileManager.default.contentsOfDirectory(at: unzipDir, includingPropertiesForKeys: [.isDirectoryKey], options: [])
@@ -282,18 +333,32 @@ class OtaManager {
                 do {
                     let resourceValues = try item.resourceValues(forKeys: [.isDirectoryKey])
                     if resourceValues.isDirectory ?? false {
-                        // Check if bundle file exists in this directory
-                        let bundleFileInDir = item.appendingPathComponent(androidBundleName)
-                        if FileManager.default.fileExists(atPath: bundleFileInDir.path) {
-                            print("OtaManager: Found \(androidBundleName) in directory '\(item.lastPathComponent)', no renaming needed")
-                            return item
+                        // Check if any .jsbundle file exists in this directory
+                        if let bundleNameInDir = findBundleFile(in: item) {
+                            print("OtaManager: Found \(bundleNameInDir) in directory '\(item.lastPathComponent)', no renaming needed")
+                            return (item, bundleNameInDir)
                         }
 
-                        // Found a directory, rename it to "bundles"
+                        // Found a directory without bundle, rename it to "bundles"
                         let bundlesDir = unzipDir.appendingPathComponent("bundles")
-                        try FileManager.default.moveItem(at: item, to: bundlesDir)
-                        print("OtaManager: Renamed content folder from '\(item.lastPathComponent)' to 'bundles'")
-                        return bundlesDir
+                        var resultDir: URL
+                        do {
+                            try FileManager.default.moveItem(at: item, to: bundlesDir)
+                            print("OtaManager: Renamed content folder from '\(item.lastPathComponent)' to 'bundles'")
+                            resultDir = bundlesDir
+                        } catch {
+                            print("OtaManager: Failed to rename folder '\(item.lastPathComponent)' to 'bundles': \(error.localizedDescription)")
+                            resultDir = item
+                        }
+                        
+                        // Try to find bundle in the renamed/original directory
+                        if let bundleInResultDir = findBundleFile(in: resultDir) {
+                            return (resultDir, bundleInResultDir)
+                        }
+                        
+                        // No bundle found, return with a default name
+                        print("OtaManager: No \(bundleExtension) file found in directory, using default name")
+                        return (resultDir, "main.jsbundle")
                     }
                 } catch {
                     print("OtaManager: Error checking item \(item.path): \(error.localizedDescription)")
@@ -340,6 +405,16 @@ class OtaManager {
         let zipFile = documentsDir.appendingPathComponent("ota_update_\(UUID().uuidString).zip")
         print("OtaManager: Created temp zip file: \(zipFile.path)")
 
+        // Ensure zip file is always cleaned up
+        defer {
+            do {
+                try FileManager.default.removeItem(at: zipFile)
+                print("OtaManager: Cleaned up temp zip file: \(zipFile.path)")
+            } catch {
+                print("OtaManager: Failed to clean up temp zip file: \(zipFile.path), error: \(error.localizedDescription)")
+            }
+        }
+
         do {
             // Download the zip file
             guard let downloadURL = URL(string: downloadUrl) else {
@@ -360,10 +435,10 @@ class OtaManager {
             let contents = try? FileManager.default.contentsOfDirectory(atPath: unzipDir.path)
             print("OtaManager: Unzip completed, directory contents: \(contents?.joined(separator: ", ") ?? "No items")")
 
-            // Find the actual content folder and rename it to "bundles"
-            let contentFolder = findAndRenameContentFolder(unzipDir: unzipDir)
-            if let contentFolder = contentFolder {
-                print("OtaManager: Using content folder: \(contentFolder.path)")
+            // Find the actual content folder and detect bundle name
+            let result = findAndRenameContentFolder(unzipDir: unzipDir)
+            if let (contentFolder, bundleName) = result {
+                print("OtaManager: Using content folder: \(contentFolder.path), bundle: \(bundleName)")
 
                 // Read version from provided URL or fallback to ota.version file
                 if let versionCheckUrl = versionCheckUrl {
@@ -383,12 +458,12 @@ class OtaManager {
                 }
 
                 // Store the content folder path in user defaults
-                preferences.setOtaUnzippedPath(contentFolder.appendingPathComponent(androidBundleName).path)
+                preferences.setOtaUnzippedPath(contentFolder.appendingPathComponent(bundleName).path)
                 print("OtaManager: Stored content folder path in UserDefaults: \(contentFolder.path)")
 
-                // Store the Android bundle name in user defaults
-                preferences.setOtaBundleName(androidBundleName)
-                print("OtaManager: Stored Android bundle name in UserDefaults: \(androidBundleName)")
+                // Store the detected bundle name in user defaults
+                preferences.setOtaBundleName(bundleName)
+                print("OtaManager: Stored bundle name in UserDefaults: \(bundleName)")
 
                 // Clean up old OTA directories, keeping only the 2 most recent
                 cleanupOldOtaDirectories()
@@ -396,8 +471,12 @@ class OtaManager {
                 return contentFolder.path
             } else {
                 print("OtaManager: No content folder found in unzip directory")
+                
+                // Try to find bundle directly in unzip directory as fallback
+                let fallbackBundleName = findBundleFile(in: unzipDir) ?? "main.jsbundle"
+                
                 // Fallback to unzip directory
-                preferences.setOtaUnzippedPath(unzipDir.path)
+                preferences.setOtaUnzippedPath(unzipDir.appendingPathComponent(fallbackBundleName).path)
                 print("OtaManager: Stored fallback unzip path in UserDefaults: \(unzipDir.path)")
 
                 // Try to read version from fallback directory if versionCheckUrl provided
@@ -411,9 +490,9 @@ class OtaManager {
                     }
                 }
 
-                // Store the Android bundle name in user defaults
-                preferences.setOtaBundleName(androidBundleName)
-                print("OtaManager: Stored Android bundle name in UserDefaults: \(androidBundleName)")
+                // Store the detected bundle name in user defaults
+                preferences.setOtaBundleName(fallbackBundleName)
+                print("OtaManager: Stored bundle name in UserDefaults: \(fallbackBundleName)")
 
                 // Clean up old OTA directories, keeping only the 2 most recent
                 cleanupOldOtaDirectories()
@@ -423,14 +502,6 @@ class OtaManager {
         } catch {
             print("OtaManager: Error in downloadAndUnzipFromUrl for URL: \(downloadUrl), error: \(error.localizedDescription)")
             throw error
-        }
-
-        // Always delete the zip file
-        do {
-            try FileManager.default.removeItem(at: zipFile)
-            print("OtaManager: Cleaned up temp zip file: \(zipFile.path)")
-        } catch {
-            print("OtaManager: Failed to clean up temp zip file: \(zipFile.path), error: \(error.localizedDescription)")
         }
     }
 
@@ -532,3 +603,4 @@ class NitroOta: HybridNitroOtaSpec {
     }
   }
 }
+

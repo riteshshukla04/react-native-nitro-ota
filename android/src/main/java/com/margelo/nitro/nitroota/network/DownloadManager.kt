@@ -37,6 +37,7 @@ class DownloadManager(private val client: OkHttpClient = OkHttpClient()) {
 
     /**
      * Downloads text content from the given URL and returns it as a string.
+     * Supports both raw GitHub URLs and custom CDN URLs (text/plain responses).
      *
      * @param url The URL to download from
      * @return The text content as a string
@@ -45,14 +46,16 @@ class DownloadManager(private val client: OkHttpClient = OkHttpClient()) {
     fun downloadText(url: String): String {
         val request = Request.Builder()
             .url(url)
+            .header("Accept", "text/plain, */*")
+            .cacheControl(okhttp3.CacheControl.Builder().noCache().noStore().build())
             .build()
 
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
-                throw IOException("Failed to download text: ${response.code}")
+                throw IOException("Failed to download text from $url: HTTP ${response.code}")
             }
 
-            return response.body?.string() ?: throw IOException("Response body is null")
+            return response.body?.string() ?: throw IOException("Response body is null for $url")
         }
     }
 }
