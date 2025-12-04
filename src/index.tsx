@@ -9,6 +9,7 @@ export function checkForOTAUpdates(versionCheckUrl: string): Promise<boolean> {
   return NitroOtaHybridObject.checkForUpdates(versionCheckUrl);
 }
 
+
 export function downloadZipFromUrl(downloadUrl: string): Promise<string> {
   console.log('downloadZipFromUrl', downloadUrl);
   return NitroOtaHybridObject.downloadZipFromUrl(downloadUrl);
@@ -24,6 +25,19 @@ export function getStoredUnzippedPath(): string | null {
 
 export function reloadApp(): void {
   NitroOtaHybridObject.reloadApp();
+}
+
+export async function checkForOTAUpdatesJS(versionCheckUrl?: string): Promise<boolean> {
+  if(!versionCheckUrl) {
+    return false;
+  }
+  const version = getStoredOtaVersion();
+  const response = await fetch(versionCheckUrl);
+  const data = await response.text();
+  if(!data) {
+    return false;
+  }
+  return data.trim() !== version?.trim();
 }
 
 /**
@@ -52,6 +66,9 @@ export class OTAUpdateManager {
       console.error('OTA: Failed to check for updates:', error);
       throw error;
     }
+  }
+  async checkForUpdatesJS(): Promise<boolean> {
+    return await checkForOTAUpdatesJS(this.versionCheckUrl);
   }
 
   /**
