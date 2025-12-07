@@ -7,6 +7,7 @@ import com.margelo.nitro.nitroota.utils.UrlUtils
 import com.margelo.nitro.nitroota.utils.ZipUtils
 import java.io.File
 import android.util.Log
+import org.json.JSONObject
 
 private const val BUNDLE_EXTENSION = ".bundle"
 
@@ -171,23 +172,10 @@ class OtaManager(
                 val (contentFolder, bundleName) = result
                 Log.d("OtaManager", "Using content folder: ${contentFolder.absolutePath}, bundle: $bundleName")
 
-                // Read version from provided URL or fallback to ota.version file
-                if (versionCheckUrl != null) {
-                    try {
-                        val otaVersion = downloadVersionFromUrl(versionCheckUrl)
-                        Log.d("OtaManager", "Downloaded version from URL: $otaVersion")
-                        preferences.setOtaVersion(otaVersion)
-                        Log.d("OtaManager", "Stored OTA version in SharedPreferences: $otaVersion")
-                    } catch (e: Exception) {
-                        Log.w("OtaManager", "Failed to download version from URL: $versionCheckUrl", e)
-                        // Fallback to local file
-                        readVersionFromLocalFile(contentFolder)
-                    }
-                } else {
-                    // No version check URL provided, try to read from local file
-                    readVersionFromLocalFile(contentFolder)
-                }
-
+               
+                    
+                readVersionFromLocalFile(contentFolder)
+             
                 // Store the content folder path in shared preferences
                 preferences.setOtaUnzippedPath(contentFolder.absolutePath + "/" + bundleName)
                 Log.d("OtaManager", "Stored content folder path in SharedPreferences: ${contentFolder.absolutePath}")
@@ -297,12 +285,45 @@ class OtaManager(
     }
 
     /**
-     * Reads the ota.version file from the local content folder.
+     * Reads the ota.version.json or ota.version file from the local content folder.
+     * Tries ota.version.json first, then falls back to ota.version.
      *
      * @param contentFolder The folder to read the version file from
      */
     private fun readVersionFromLocalFile(contentFolder: File) {
-        // Read ota.version file from the content folder
+        // First, try to read ota.version.json
+        val otaVersionJsonFile = File(contentFolder, "ota.version.json")
+        if (otaVersionJsonFile.exists() && otaVersionJsonFile.isFile) {
+            try {
+                val jsonContent = otaVersionJsonFile.readText().trim()
+                Log.d("OtaManager", "Found ota.version.json file with content: $jsonContent")
+                
+                val jsonObject = JSONObject(jsonContent)
+                val otaVersion = jsonObject.getString("version")
+                
+                Log.d("OtaManager", "Parsed version from JSON: $otaVersion")
+                preferences.setOtaVersion(otaVersion)
+                Log.d("OtaManager", "Stored OTA version in SharedPreferences: $otaVersion")
+                
+                // Log additional metadata if present
+                if (jsonObject.has("isSemver")) {
+                    Log.d("OtaManager", "isSemver: ${jsonObject.getBoolean("isSemver")}")
+                }
+                if (jsonObject.has("releaseNotes")) {
+                    Log.d("OtaManager", "Release notes: ${jsonObject.getString("releaseNotes")}")
+                }
+                if (jsonObject.has("targetVersions")) {
+                    Log.d("OtaManager", "Target versions: ${jsonObject.getJSONObject("targetVersions")}")
+                }
+                
+                return
+            } catch (e: Exception) {
+                Log.e("OtaManager", "Error parsing ota.version.json file", e)
+                // Fall through to try ota.version file
+            }
+        }
+        
+        // Fallback to reading ota.version file
         val otaVersionFile = File(contentFolder, "ota.version")
         if (otaVersionFile.exists() && otaVersionFile.isFile) {
             val otaVersion = otaVersionFile.readText().trim()
@@ -310,7 +331,7 @@ class OtaManager(
             preferences.setOtaVersion(otaVersion)
             Log.d("OtaManager", "Stored OTA version in SharedPreferences: $otaVersion")
         } else {
-            Log.w("OtaManager", "ota.version file not found in content folder: ${contentFolder.absolutePath}")
+            Log.w("OtaManager", "Neither ota.version.json nor ota.version file found in content folder: ${contentFolder.absolutePath}")
         }
     }
 

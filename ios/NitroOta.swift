@@ -364,6 +364,40 @@ class OtaManager {
     }
 
     private func readVersionFromLocalFile(_ contentFolder: URL) {
+        // First, try to read ota.version.json
+        let otaVersionJsonFile = contentFolder.appendingPathComponent("ota.version.json")
+        if FileManager.default.fileExists(atPath: otaVersionJsonFile.path) {
+            do {
+                let jsonData = try Data(contentsOf: otaVersionJsonFile)
+                let jsonContent = try String(data: jsonData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                print("OtaManager: Found ota.version.json file with content: \(jsonContent)")
+                
+                if let jsonObject = try JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any],
+                   let version = jsonObject["version"] as? String {
+                    print("OtaManager: Parsed version from JSON: \(version)")
+                    preferences.setOtaVersion(version)
+                    print("OtaManager: Stored OTA version in UserDefaults: \(version)")
+                    
+                    // Log additional metadata if present
+                    if let isSemver = jsonObject["isSemver"] as? Bool {
+                        print("OtaManager: isSemver: \(isSemver)")
+                    }
+                    if let releaseNotes = jsonObject["releaseNotes"] as? String {
+                        print("OtaManager: Release notes: \(releaseNotes)")
+                    }
+                    if let targetVersions = jsonObject["targetVersions"] {
+                        print("OtaManager: Target versions: \(targetVersions)")
+                    }
+                    
+                    return
+                }
+            } catch {
+                print("OtaManager: Error parsing ota.version.json file: \(error.localizedDescription)")
+                // Fall through to try ota.version file
+            }
+        }
+        
+        // Fallback to reading ota.version file
         let otaVersionFile = contentFolder.appendingPathComponent("ota.version")
         do {
             let otaVersion = try String(contentsOf: otaVersionFile, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
@@ -371,7 +405,7 @@ class OtaManager {
             preferences.setOtaVersion(otaVersion)
             print("OtaManager: Stored OTA version in UserDefaults: \(otaVersion)")
         } catch {
-            print("OtaManager: ota.version file not found in content folder: \(contentFolder.path)")
+            print("OtaManager: Neither ota.version.json nor ota.version file found in content folder: \(contentFolder.path)")
         }
     }
 

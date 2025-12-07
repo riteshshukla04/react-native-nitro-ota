@@ -53,6 +53,16 @@ export function getVersionUrl(options: GitHubFileOptions): string {
   return url;
 }
 
+/**
+ * Creates GitHub OTA configuration URLs
+ *
+ * Note: The native implementations automatically check for both ota.version.json and ota.version files.
+ * If you're using ota.version.json for version checking via URL, pass 'ota.version.json' as otaVersionPath.
+ *
+ * @param githubUrl - The GitHub repository URL
+ * @param otaVersionPath - Path to the version file (defaults to 'ota.version', but 'ota.version.json' is also supported)
+ * @param ref - The branch, tag, or commit SHA (defaults to 'main')
+ */
 export function githubOTA({
   githubUrl,
   otaVersionPath = 'ota.version',

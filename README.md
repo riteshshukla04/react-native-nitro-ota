@@ -1,9 +1,6 @@
 # react-native-nitro-ota
 
-
-***Still in Alpha and will have issues***
-
-
+**_Still in Alpha and will have issues_**
 
 ⚡️ **High-performance Over-The-Air (OTA) updates for React Native** - Powered by Nitro Modules
 
@@ -16,8 +13,6 @@ Download, unzip, and apply JavaScript bundle updates at runtime without going th
 - 🌐 **Server Agnostic** - Works with any CDN, S3, GitHub Releases, or custom server
 - 📦 **Automatic Bundle Management** - Handles download, extraction, and cleanup
 - 🔒 **Version Control** - Built-in version checking and management
-
-
 
 ## 📦 Installation
 
@@ -45,14 +40,14 @@ class MainApplication : Application(), ReactApplication {
 
   override val reactNativeHost: ReactNativeHost =
       object : DefaultReactNativeHost(this) {
-        
+
         override fun getPackages(): List<ReactPackage> =
             PackageList(this).packages
-        
+
         override fun getJSMainModuleName(): String = "index"
-        
+
         override fun getUseDeveloperSupport(): Boolean = BuildConfig.DEBUG
-        
+
         // 🔥 Load OTA bundle if available, otherwise use default
         override fun getJSBundleFile(): String? {
           return getStoredBundlePath(this@MainApplication)
@@ -62,6 +57,7 @@ class MainApplication : Application(), ReactApplication {
 ```
 
 **If using modern React host:**
+
 ```kotlin
 import com.facebook.react.ReactHost
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
@@ -82,23 +78,26 @@ class MainApplication : Application(), ReactApplication {
 ### iOS: NitroOtaBundleManager
 
 1. Add to your `Podfile`:
+
 ```ruby
 pod 'NitroOtaBundleManager', :path => '../node_modules/react-native-nitro-ota'
 ```
 
 2. Install pods:
+
 ```bash
 cd ios && pod install
 ```
 
 3. Update `AppDelegate.swift`:
+
 ```swift
 import UIKit
 import React
 import NitroOtaBundleManager
 
 class AppDelegate: UIResponder, UIApplicationDelegate {
-    
+
     override func bundleURL() -> URL? {
         #if DEBUG
         return RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index")
@@ -106,10 +105,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Check for OTA bundle
         if let bundlePath = NitroOtaBundleManager.shared.getStoredBundlePath() {
             let bundleURL = URL(fileURLWithPath: bundlePath)
-        
+
             return bundleURL
         }
-        
+
         // Fallback to default bundle
         return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
         #endif
@@ -129,8 +128,8 @@ import { githubOTA, OTAUpdateManager } from 'react-native-nitro-ota';
 // Configure GitHub URLs
 const { downloadUrl, versionUrl } = githubOTA({
   githubUrl: 'https://github.com/your-username/your-ota-repo',
-  otaVersionPath: 'ota.version',  // optional, defaults to 'ota.version'
-  ref: 'main'  // optional, defaults to 'main'
+  otaVersionPath: 'ota.version', // or 'ota.version.json' for advanced features
+  ref: 'main', // optional, defaults to 'main'
 });
 
 // Create update manager
@@ -139,10 +138,16 @@ const otaManager = new OTAUpdateManager(downloadUrl, versionUrl);
 // Check for updates
 const hasUpdate = await otaManager.checkForUpdates();
 if (hasUpdate) {
-  // Download update
   await otaManager.downloadUpdate();
-  otaManager.reloadApp()
-  console.log('Update downloaded! Restart app to apply.');
+  otaManager.reloadApp();
+}
+
+// Or use advanced JS checking (supports JSON format)
+const updateInfo = await otaManager.checkForUpdatesJS();
+if (updateInfo?.hasUpdate && updateInfo.isCompatible) {
+  console.log('Compatible update available:', updateInfo.remoteVersion);
+  await otaManager.downloadUpdate();
+  otaManager.reloadApp();
 }
 
 // Get current version
@@ -189,29 +194,56 @@ if (hasUpdate) {
 const currentVersion = NitroOta.getStoredOtaVersion();
 console.log('Current OTA version:', currentVersion);
 ```
+
 ### 3. Get Current Version
 
 ```typescript
- NitroOta.reloadApp();
-
+NitroOta.reloadApp();
 ```
 
-## 📝 Understanding the `ota.version` File
+## 📝 Understanding Version Files
+
+### Basic: `ota.version` (Simple Text)
 
 The `ota.version` file is a simple text file that contains your current bundle version. **The version can be anything** - numbers, strings, or even creative identifiers like "apple", "orange", "winter2024", or "bugfix-v3".
 
-
-**Important:** There's no "greater than" or "less than" logic. The library simply checks if `currentVersion !== newVersion`. This means you can use any naming scheme that makes sense for your workflow - just ensure each new update has a **different** version string than the previous one.
-
-**Creating the version file:**
 ```bash
 echo "1.0.0" > ota.version
-# or
-echo "apple" > ota.version
-# or
-echo "$(date +%Y%m%d)" > ota.version  # Use current date as version
 ```
 
+### Advanced: `ota.version.json` (With Metadata)
+
+For more control, use the JSON format with semantic versioning and target app versions:
+
+```json
+{
+  "version": "1.2.3",
+  "isSemver": true,
+  "targetVersions": {
+    "android": ["2.30.1", "2.30.2"],
+    "ios": ["2.30.1"]
+  },
+  "releaseNotes": "Bug fixes and improvements"
+}
+```
+
+
+**JavaScript API for Advanced Checking:**
+
+```typescript
+import { checkForOTAUpdatesJS } from 'react-native-nitro-ota';
+
+// Get detailed update info
+const result = await checkForOTAUpdatesJS(
+  'https://example.com/ota.version.json'
+);
+if (result?.hasUpdate && result.isCompatible) {
+  console.log(`New version: ${result.remoteVersion}`);
+  console.log(`Notes: ${result.metadata?.releaseNotes}`);
+}
+```
+
+> **Note:** Both formats are supported. The library automatically detects which one you're using.
 
 ## 📦 Creating and Uploading Bundles
 
@@ -222,6 +254,7 @@ Follow these steps to generate and distribute your OTA bundle:
 Run the following commands to create a production-ready bundle and assets for your platform:
 
 #### For Android
+
 ```bash
 npx react-native bundle \
   --platform android \
@@ -232,6 +265,7 @@ npx react-native bundle \
 ```
 
 #### For iOS
+
 ```bash
 npx react-native bundle \
   --platform ios \

@@ -1,14 +1,43 @@
 import { NitroModules } from 'react-native-nitro-modules';
+import { Platform } from 'react-native';
 import type { NitroOta } from './NitroOta.nitro';
+import {
+  checkOTAVersion,
+  hasCompatibleUpdate,
+  type OTAVersionCheckResult,
+} from './otaVersionChecker';
 
 const NitroOtaHybridObject =
   NitroModules.createHybridObject<NitroOta>('NitroOta');
+
+/**
+ * Target versions for OTA updates
+ */
+export interface OTATargetVersions {
+  /** List of Android app versions this OTA can be safely installed on. Leave empty to target all versions */
+  android?: string[];
+  /** List of iOS app versions this OTA can be safely installed on. Leave empty to target all versions */
+  ios?: string[];
+}
+
+/**
+ * OTA version configuration structure for ota.version.json
+ */
+export interface OTAVersionConfig {
+  /** The OTA version identifier */
+  version: string;
+  /** Target app versions for different platforms */
+  targetVersions?: OTATargetVersions;
+  /** Whether the version follows semantic versioning (x.y.z format). Defaults to false */
+  isSemver?: boolean;
+  /** Optional release notes for this OTA update */
+  releaseNotes?: string;
+}
 
 export function checkForOTAUpdates(versionCheckUrl: string): Promise<boolean> {
   console.log('checkForUpdates', versionCheckUrl);
   return NitroOtaHybridObject.checkForUpdates(versionCheckUrl);
 }
-
 
 export function downloadZipFromUrl(downloadUrl: string): Promise<string> {
   console.log('downloadZipFromUrl', downloadUrl);
@@ -27,17 +56,94 @@ export function reloadApp(): void {
   NitroOtaHybridObject.reloadApp();
 }
 
-export async function checkForOTAUpdatesJS(versionCheckUrl?: string): Promise<boolean> {
-  if(!versionCheckUrl) {
+/**
+ * Gets the current app version from the native bundle
+ * Note: This requires react-native-device-info or similar package to be installed
+ * If not available, returns a default version
+ */
+export function getAppVersion(): string {
+  try {
+    // Try to get from react-native-device-info if available
+    const DeviceInfo = require('react-native-device-info');
+    return DeviceInfo.getVersion();
+  } catch (e) {
+    console.warn(
+      'OTA: react-native-device-info not found. Using default app version. Install react-native-device-info for accurate version checking.'
+    );
+    // Return a default version if DeviceInfo is not available
+    return '1.0.0';
+  }
+}
+
+/**
+ * Checks for OTA updates with enhanced version comparison
+ * Supports both plain text (ota.version) and JSON (ota.version.json) formats
+ *
+ * @param versionCheckUrl - URL to check for version information
+ * @param appVersion - Optional app version (auto-detected if not provided)
+ * @returns OTAVersionCheckResult with detailed update information
+ */
+export async function checkForOTAUpdatesJS(
+  versionCheckUrl?: string,
+  appVersion?: string
+): Promise<OTAVersionCheckResult | null> {
+  if (!versionCheckUrl) {
+    return null;
+  }
+
+  const currentOtaVersion = getStoredOtaVersion();
+  const currentAppVersion = appVersion || getAppVersion();
+
+  try {
+    const result = await checkOTAVersion(
+      versionCheckUrl,
+      currentOtaVersion,
+      currentAppVersion
+    );
+
+    console.log('OTA Version Check Result:', {
+      hasUpdate: result.hasUpdate,
+      isCompatible: result.isCompatible,
+      remoteVersion: result.remoteVersion,
+      currentVersion: result.currentVersion,
+      platform: Platform.OS,
+      appVersion: currentAppVersion,
+    });
+
+    return result;
+  } catch (error) {
+    console.error('OTA: Error checking for updates:', error);
+    throw error;
+  }
+}
+
+/**
+ * Simple check for compatible OTA updates (backward compatible API)
+ * @param versionCheckUrl - URL to check for version information
+ * @param appVersion - Optional app version (auto-detected if not provided)
+ * @returns true if a compatible update is available, false otherwise
+ */
+export async function hasOTAUpdate(
+  versionCheckUrl?: string,
+  appVersion?: string
+): Promise<boolean> {
+  if (!versionCheckUrl) {
     return false;
   }
-  const version = getStoredOtaVersion();
-  const response = await fetch(versionCheckUrl);
-  const data = await response.text();
-  if(!data) {
+
+  const currentOtaVersion = getStoredOtaVersion();
+  const currentAppVersion = appVersion || getAppVersion();
+
+  try {
+    return await hasCompatibleUpdate(
+      versionCheckUrl,
+      currentOtaVersion,
+      currentAppVersion
+    );
+  } catch (error) {
+    console.error('OTA: Error checking for compatible updates:', error);
     return false;
   }
-  return data.trim() !== version?.trim();
 }
 
 /**
@@ -67,8 +173,24 @@ export class OTAUpdateManager {
       throw error;
     }
   }
-  async checkForUpdatesJS(): Promise<boolean> {
-    return await checkForOTAUpdatesJS(this.versionCheckUrl);
+  /**
+   * Checks for updates using JS implementation with detailed version comparison
+   * @param appVersion - Optional app version (auto-detected if not provided)
+   * @returns Detailed version check result
+   */
+  async checkForUpdatesJS(
+    appVersion?: string
+  ): Promise<OTAVersionCheckResult | null> {
+    return await checkForOTAUpdatesJS(this.versionCheckUrl, appVersion);
+  }
+
+  /**
+   * Simple check for compatible updates (backward compatible)
+   * @param appVersion - Optional app version (auto-detected if not provided)
+   * @returns true if a compatible update is available
+   */
+  async hasCompatibleUpdate(appVersion?: string): Promise<boolean> {
+    return await hasOTAUpdate(this.versionCheckUrl, appVersion);
   }
 
   /**
@@ -113,3 +235,8 @@ export class OTAUpdateManager {
 }
 
 export { githubOTA } from './githubUtils';
+export type { OTAVersionCheckResult } from './otaVersionChecker';
+export {
+  checkOTAVersion,
+  hasCompatibleUpdate as checkCompatibleUpdate,
+} from './otaVersionChecker';
