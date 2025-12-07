@@ -1,5 +1,4 @@
 import { NitroModules } from 'react-native-nitro-modules';
-import { Platform } from 'react-native';
 import type { NitroOta } from './NitroOta.nitro';
 import {
   checkOTAVersion,
@@ -100,15 +99,6 @@ export async function checkForOTAUpdatesJS(
       currentOtaVersion,
       currentAppVersion
     );
-
-    console.log('OTA Version Check Result:', {
-      hasUpdate: result.hasUpdate,
-      isCompatible: result.isCompatible,
-      remoteVersion: result.remoteVersion,
-      currentVersion: result.currentVersion,
-      platform: Platform.OS,
-      appVersion: currentAppVersion,
-    });
 
     return result;
   } catch (error) {

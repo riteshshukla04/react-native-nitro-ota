@@ -137,6 +137,17 @@ export async function checkOTAVersion(
       throw new Error('Empty response from version check URL');
     }
     remoteVersion = data.trim();
+    // Try Parsing JSON from the text response if it is a valid JSON string
+    try {
+      const jsonData = JSON.parse(data);
+      if (!jsonData || typeof jsonData !== 'object' || !jsonData.version) {
+        throw new Error('Invalid JSON response: missing version field');
+      }
+      versionConfig = jsonData as OTAVersionConfig;
+      remoteVersion = versionConfig.version;
+    } catch (error) {
+       // Its a text file, so we need to parse it
+     }
   }
 
   // If no current version, update is available

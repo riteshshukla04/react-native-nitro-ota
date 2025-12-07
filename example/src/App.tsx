@@ -41,15 +41,23 @@ export default function App() {
 
   const handleCheckUpdates = async () => {
     try {
-      const hasUpdate = await otaManager.checkForUpdates();
-      if (hasUpdate) {
-        Alert.alert('Update Available', 'A new OTA version is available!');
+      const updateResult = await otaManager.checkForUpdatesJS();
+      console.log('Update check result:', updateResult);
+      
+      if (updateResult?.hasUpdate && updateResult.isCompatible) {
+        Alert.alert(
+          'Update Available',
+          `New version: ${updateResult.remoteVersion}\n${updateResult.metadata?.releaseNotes || ''}`,
+          [
+            { text: 'Later', style: 'cancel' },
+            { text: 'Download', onPress: handleDownload }
+          ]
+        );
+      } else if (updateResult?.hasUpdate && !updateResult.isCompatible) {
+        Alert.alert('Update Not Compatible', 'An update is available but not compatible with your app version');
       } else {
-        Alert.alert('Up to Date', 'You are running the latest version.');
+        Alert.alert('No Updates', 'You are on the latest version');
       }
-
-      // Refresh version info
-      setOtaVersion(otaManager.getVersion());
     } catch (error) {
       console.error('Update check failed:', error);
       Alert.alert('Error', 'Failed to check for updates');
