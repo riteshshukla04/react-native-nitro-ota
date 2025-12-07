@@ -43,18 +43,21 @@ export default function App() {
     try {
       const updateResult = await otaManager.checkForUpdatesJS();
       console.log('Update check result:', updateResult);
-      
+
       if (updateResult?.hasUpdate && updateResult.isCompatible) {
         Alert.alert(
           'Update Available',
           `New version: ${updateResult.remoteVersion}\n${updateResult.metadata?.releaseNotes || ''}`,
           [
             { text: 'Later', style: 'cancel' },
-            { text: 'Download', onPress: handleDownload }
+            { text: 'Download', onPress: handleDownload },
           ]
         );
       } else if (updateResult?.hasUpdate && !updateResult.isCompatible) {
-        Alert.alert('Update Not Compatible', 'An update is available but not compatible with your app version');
+        Alert.alert(
+          'Update Not Compatible',
+          'An update is available but not compatible with your app version'
+        );
       } else {
         Alert.alert('No Updates', 'You are on the latest version');
       }

@@ -146,8 +146,8 @@ export async function checkOTAVersion(
       versionConfig = jsonData as OTAVersionConfig;
       remoteVersion = versionConfig.version;
     } catch (error) {
-       // Its a text file, so we need to parse it
-     }
+      // Its a text file, so we need to parse it
+    }
   }
 
   // If no current version, update is available
