@@ -1,8 +1,9 @@
 /* eslint-disable */
-import { withAppDelegate } from '@expo/config-plugins';
+import { withAppDelegate,withPodfile } from '@expo/config-plugins';
 
 const withIosAction: any = (config: any) => {
-  return withAppDelegate(config, (config: any) => {
+  // First, modify AppDelegate
+  config = withAppDelegate(config, (config: any) => {
     if (!config.modResults.contents.includes('import NitroOtaBundleManager')) {
       config.modResults.contents = `import NitroOtaBundleManager\n${config.modResults.contents}`;
     }
@@ -28,6 +29,21 @@ const withIosAction: any = (config: any) => {
 
     return config;
   });
+
+  // Then, modify Podfile
+  config = withPodfile(config, (config: any) => {
+    if (!config.modResults.contents.includes('pod "NitroOtaBundleManager"')) {
+      config.modResults.contents = config.modResults.contents.replace(
+        /(\s*)use_react_native!/g,
+        `$1pod "NitroOtaBundleManager", :path => "../node_modules/react-native-nitro-ota"
+
+$1use_react_native!`
+      );
+    }
+    return config;
+  });
+
+  return config;
 };
 
 export default withIosAction;

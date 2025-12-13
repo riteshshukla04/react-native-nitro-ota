@@ -41,9 +41,9 @@
     "test": "jest",
     "typecheck": "tsc",
     "lint": "eslint \"**/*.{js,ts,tsx}\"",
-    "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build lib",
+    "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build lib expo/plugins/dist",
     "prepare": "bob build",
-    "build:plugin": "cd expo/plugins && yarn build",
+    "build:plugin": "cd expo/plugins && bun tsc",
     "nitrogen": "nitrogen",
     "release": "release-it --only-version"
   },
