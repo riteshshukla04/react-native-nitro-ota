@@ -125,7 +125,7 @@ export async function checkOTAVersion(
   // Check if response is JSON
   if (contentType && contentType.includes('application/json')) {
     const jsonData = await response.json();
-    if (!jsonData || typeof jsonData !== 'object' || !jsonData.version) {
+    if (!jsonData || typeof jsonData !== 'object' || !jsonData.version  || !jsonData.configVersion) {
       throw new Error('Invalid JSON response: missing version field');
     }
     versionConfig = jsonData as OTAVersionConfig;
