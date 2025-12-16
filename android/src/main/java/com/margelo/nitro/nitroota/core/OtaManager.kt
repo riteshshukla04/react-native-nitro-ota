@@ -353,6 +353,24 @@ class OtaManager(
     }
 
     /**
+     * Gets the stored version check URL from shared preferences.
+     *
+     * @return The stored version check URL, or null if not found
+     */
+    fun getStoredVersionCheckUrl(): String? {
+        return preferences.getUpdateVersionCheckUrl()
+    }
+
+    /**
+     * Gets the stored download URL from shared preferences.
+     *
+     * @return The stored download URL, or null if not found
+     */
+    fun getStoredDownloadUrl(): String? {
+        return preferences.getUpdateDownloadUrl()
+    }
+
+    /**
      * Clears the stored OTA data (path, version, download URL, and version check URL) from shared preferences.
      */
     fun clearStoredData() {

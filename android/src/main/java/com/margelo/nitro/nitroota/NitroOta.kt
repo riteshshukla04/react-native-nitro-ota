@@ -2,8 +2,13 @@ package com.margelo.nitro.nitroota
 
 import android.util.Log
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.Data
+import androidx.work.Constraints
+import androidx.work.NetworkType
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.BackoffPolicy
 import com.facebook.proguard.annotations.DoNotStrip
 import com.margelo.nitro.NitroModules
 import com.margelo.nitro.core.Promise
@@ -37,7 +42,7 @@ class NitroOta : HybridNitroOtaSpec() {
   override fun getStoredOtaVersion(): Variant_NullType_String {
     val version = otaManager.getStoredOtaVersion()
     return if (version == null) {
-      Variant_NullType_String.create(NullType.instance())
+      Variant_NullType_String.create(NullType.NULL)
     } else {
       Variant_NullType_String.create(version)
     }
@@ -46,7 +51,7 @@ class NitroOta : HybridNitroOtaSpec() {
   override fun getStoredUnzippedPath(): Variant_NullType_String {
     val path = otaManager.getStoredUnzippedPath()
     return if (path == null) {
-      Variant_NullType_String.create(NullType.instance())
+      Variant_NullType_String.create(NullType.NULL)
     } else {
       Variant_NullType_String.create(path)
     }
@@ -68,34 +73,75 @@ class NitroOta : HybridNitroOtaSpec() {
       return@async unzippedPath
     }
   }
-  override fun scheduleJSInBackground(callback: () -> Promise<Promise<Unit>>, interval: Double): Unit {
-    Log.d("NitroOta", "Scheduling background task with WorkManager, interval: $interval seconds")
+  override fun scheduleBackgroundOTACheck(versionCheckUrl: String, downloadUrl: Variant_NullType_String?, interval: Double): Unit {
+    // Extract the actual download URL string from the Variant (null | string)
+    val downloadUrlString = downloadUrl?.asSecondOrNull()
+    
+    Log.d("NitroOta", "Scheduling background OTA check with WorkManager")
+    Log.d("NitroOta", "  - Version check URL: $versionCheckUrl")
+    Log.d("NitroOta", "  - Download URL: ${downloadUrlString ?: "null (will use version check URL)"}")
+    Log.d("NitroOta", "  - Interval: $interval seconds")
     
     val context = NitroModules.applicationContext 
         ?: throw Error("Cannot schedule background task - No Context available!")
     
-    // Generate unique work ID
-    val workId = UUID.randomUUID().toString()
+    if (versionCheckUrl.isBlank()) {
+        Log.e("NitroOta", "Cannot schedule background check: Version check URL is empty")
+        throw IllegalArgumentException("Version check URL cannot be empty")
+    }
     
-    // Register the async callback with the Worker
-    BackgroundTaskWorker.registerCallback(workId, callback)
-    
-    // Create input data with the work ID
+    // Create input data with URLs passed from JavaScript (not from stored preferences)
     val inputData = Data.Builder()
-        .putString("work_id", workId)
+        .putString(BackgroundTaskWorker.DATA_KEY_VERSION_CHECK_URL, versionCheckUrl)
+        .apply {
+            if (!downloadUrlString.isNullOrBlank()) {
+                putString(BackgroundTaskWorker.DATA_KEY_DOWNLOAD_URL, downloadUrlString)
+            }
+        }
         .build()
     
-    // Create a one-time work request with initial delay
-    val workRequest = OneTimeWorkRequestBuilder<BackgroundTaskWorker>()
-        .setInitialDelay(interval.toLong(), TimeUnit.SECONDS)
+    // Log the input data to verify it's being set correctly
+    Log.d("NitroOta", "Input data created:")
+    Log.d("NitroOta", "  - ${BackgroundTaskWorker.DATA_KEY_VERSION_CHECK_URL} = ${inputData.getString(BackgroundTaskWorker.DATA_KEY_VERSION_CHECK_URL)}")
+    Log.d("NitroOta", "  - ${BackgroundTaskWorker.DATA_KEY_DOWNLOAD_URL} = ${inputData.getString(BackgroundTaskWorker.DATA_KEY_DOWNLOAD_URL)}")
+    
+    // Create constraints - require network since we need to check for updates
+    val constraints = Constraints.Builder()
+        .setRequiredNetworkType(NetworkType.CONNECTED)
+        .build()
+    
+    // WorkManager requires minimum 15 minutes for periodic work
+    val intervalMinutes = if (interval < 900) 15L else (interval / 60).toLong()
+    
+    // Create a periodic work request that runs repeatedly at the specified interval
+    val workRequest = PeriodicWorkRequestBuilder<BackgroundTaskWorker>(
+        intervalMinutes, TimeUnit.MINUTES
+    )
         .setInputData(inputData)
-        .addTag(BackgroundTaskWorker.TASK_ID)
-        .addTag(workId)
+        .setConstraints(constraints)
+        .setBackoffCriteria(
+            BackoffPolicy.EXPONENTIAL,
+            10000L, // 10 seconds minimum backoff
+            TimeUnit.MILLISECONDS
+        )
         .build()
     
-    // Schedule the work with WorkManager
-    WorkManager.getInstance(context).enqueue(workRequest)
+    // Use enqueueUniquePeriodicWork with REPLACE policy to prevent multiple schedules
+    // This ensures that even if called multiple times (e.g., in useEffect), 
+    // only one background task will be scheduled at a time
+    WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+        BackgroundTaskWorker.UNIQUE_WORK_NAME,
+        ExistingPeriodicWorkPolicy.REPLACE, // Replace any existing scheduled work
+        workRequest
+    )
     
-    Log.d("NitroOta", "Background task scheduled (Task ID: ${BackgroundTaskWorker.TASK_ID}, Work ID: $workId)")
+    Log.d("NitroOta", "Background OTA check scheduled successfully")
+    Log.d("NitroOta", "  - Unique work name: ${BackgroundTaskWorker.UNIQUE_WORK_NAME}")
+    Log.d("NitroOta", "  - Interval: $intervalMinutes minutes (minimum 15 minutes required by WorkManager)")
+    Log.d("NitroOta", "  - Policy: REPLACE (will cancel any existing scheduled work)")
+    Log.d("NitroOta", "  - Safe to call multiple times (e.g., in useEffect)")
+    Log.d("NitroOta", "  - Will check for updates PERIODICALLY and download automatically using native code")
+    Log.d("NitroOta", "  - Works even when app is closed!")
+    Log.d("NitroOta", "  - Using URLs provided from JavaScript (not stored preferences)")
   }
 }
