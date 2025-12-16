@@ -67,6 +67,22 @@ export default function App() {
     }
   };
 
+  const handleScheduleBackgroundCheckForUpdates = () => {
+    try {
+      otaManager.scheduleBackgroundCheck(20); // Schedule check in 100 seconds
+      Alert.alert(
+        'Background Check Scheduled',
+        'OTA check will run in 20 seconds using native code. Works even when app is closed!'
+      );
+    } catch (error) {
+      console.error('Failed to schedule background check:', error);
+      Alert.alert(
+        'Error',
+        'Failed to schedule background check. Make sure you have downloaded an update first.'
+      );
+    }
+  };
+
   const handleReloadApp = () => {
     reloadApp();
   };
@@ -88,6 +104,10 @@ export default function App() {
         <Button title="Handle Download" onPress={handleDownload} />
         <Button title="Check for Updates" onPress={handleCheckUpdates} />
         <Button title="Reload App" onPress={handleReloadApp} />
+        <Button
+          title="Schedule Background Check for Updates"
+          onPress={handleScheduleBackgroundCheckForUpdates}
+        />
       </View>
     </View>
   );
@@ -123,7 +143,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   buttonContainer: {
-    flexDirection: 'row',
     justifyContent: 'space-around',
     width: '100%',
     marginTop: 20,

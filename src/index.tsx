@@ -222,6 +222,37 @@ export class OTAUpdateManager {
   reloadApp(): void {
     NitroOtaHybridObject.reloadApp();
   }
+
+  /**
+   * Schedule a background OTA check that runs natively (no JavaScript callbacks needed).
+   *
+   * @param interval - Delay in seconds before the check runs
+   *
+   * Note:
+   * - Android: Uses WorkManager, works even when app is closed
+   * - iOS: Uses background tasks, behavior depends on iOS version and permissions
+   * - Safe to call multiple times (replaces existing scheduled tasks)
+   * - URLs are passed from JavaScript (doesn't rely on stored preferences)
+   *
+   * @example
+   * ```typescript
+   * const manager = new OTAUpdateManager(downloadUrl, versionCheckUrl);
+   * manager.scheduleBackgroundCheck(3600); // Check every hour
+   * ```
+   */
+  scheduleBackgroundCheck(interval: number): void {
+    if (!this.versionCheckUrl) {
+      throw new Error(
+        'Version check URL is required to schedule background checks'
+      );
+    }
+
+    NitroOtaHybridObject.scheduleBackgroundOTACheck(
+      this.versionCheckUrl,
+      this.downloadUrl,
+      interval
+    );
+  }
 }
 
 export { githubOTA } from './githubUtils';

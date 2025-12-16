@@ -8,6 +8,103 @@
 import Foundation
 import NitroModules
 import SSZipArchive
+import UIKit
+import BackgroundTasks
+
+
+
+// MARK: - BackgroundOTAScheduler
+
+class BackgroundOTAScheduler {
+    static let shared = BackgroundOTAScheduler()
+    
+    private var timer: Timer?
+    private var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
+    
+    private init() {}
+    
+    func scheduleCheck(interval: TimeInterval, versionCheckUrl: String, downloadUrl: String?, otaManager: OtaManager) {
+        // Cancel any existing timer
+        cancelScheduledCheck()
+        
+        print("BackgroundOTAScheduler: Scheduling check in \(interval) seconds")
+        
+        // Schedule on main thread since Timer needs a run loop
+        DispatchQueue.main.async { [weak self] in
+            self?.timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: false) { [weak self] _ in
+                self?.performOTACheck(versionCheckUrl: versionCheckUrl, downloadUrl: downloadUrl, otaManager: otaManager)
+            }
+        }
+    }
+    
+    func cancelScheduledCheck() {
+        timer?.invalidate()
+        timer = nil
+        
+        // End any background task
+        if backgroundTaskID != .invalid {
+            UIApplication.shared.endBackgroundTask(backgroundTaskID)
+            backgroundTaskID = .invalid
+        }
+        
+        print("BackgroundOTAScheduler: Cancelled scheduled check")
+    }
+    
+    private func performOTACheck(versionCheckUrl: String, downloadUrl: String?, otaManager: OtaManager) {
+        print("BackgroundOTAScheduler: Starting OTA check...")
+        
+        // Begin background task to extend execution time
+        backgroundTaskID = UIApplication.shared.beginBackgroundTask(withName: "com.pikachu.NitroOta.backgroundOTA") { [weak self] in
+            print("BackgroundOTAScheduler: Background task expiring, cleaning up...")
+            if let taskID = self?.backgroundTaskID, taskID != .invalid {
+                UIApplication.shared.endBackgroundTask(taskID)
+                self?.backgroundTaskID = .invalid
+            }
+        }
+        
+        guard backgroundTaskID != .invalid else {
+            print("BackgroundOTAScheduler: Failed to start background task")
+            return
+        }
+        
+        print("BackgroundOTAScheduler: Background task started with ID: \(backgroundTaskID)")
+        
+        // Perform the check on a background queue
+        DispatchQueue.global(qos: .background).async { [weak self] in
+            do {
+                // Check for updates using native code
+                print("BackgroundOTAScheduler: Checking for updates...")
+                let hasUpdate = try otaManager.checkForUpdates(versionCheckUrl)
+                
+                if hasUpdate {
+                    print("BackgroundOTAScheduler: Update available! Starting download...")
+                    
+                    // Use provided download URL or fall back to version check URL
+                    let urlToDownload = downloadUrl ?? versionCheckUrl
+                    
+                    do {
+                        let unzippedPath = try otaManager.downloadAndUnzipFromUrl(urlToDownload, versionCheckUrl: nil)
+                        print("BackgroundOTAScheduler: Update downloaded and extracted successfully to: \(unzippedPath)")
+                        print("BackgroundOTAScheduler: App will use the new bundle on next restart")
+                    } catch {
+                        print("BackgroundOTAScheduler: Failed to download update: \(error.localizedDescription)")
+                    }
+                } else {
+                    print("BackgroundOTAScheduler: No update available, app is up to date")
+                }
+            } catch {
+                print("BackgroundOTAScheduler: Error during OTA check: \(error.localizedDescription)")
+            }
+            
+            // End the background task
+            print("BackgroundOTAScheduler: Ending background task")
+            if let taskID = self?.backgroundTaskID, taskID != .invalid {
+                UIApplication.shared.endBackgroundTask(taskID)
+                self?.backgroundTaskID = .invalid
+            }
+        }
+    }
+}
 
 
 // MARK: - ZipUtils
@@ -542,6 +639,14 @@ class OtaManager {
     func getStoredOtaVersion() -> String? {
         return preferences.getOtaVersion()
     }
+    
+    func getStoredVersionCheckUrl() -> String? {
+        return preferences.getUpdateVersionCheckUrl()
+    }
+    
+    func getStoredDownloadUrl() -> String? {
+        return preferences.getUpdateDownloadUrl()
+    }
 
     func checkForUpdates(_ versionCheckUrl: String? = nil) throws -> Bool {
         let checkUrl = try versionCheckUrl ?? preferences.getUpdateVersionCheckUrl() ?? {
@@ -604,16 +709,69 @@ class NitroOta: HybridNitroOtaSpec {
         }
     }
 
-    func getStoredOtaVersion() throws -> String? {
-        return otaManager.getStoredOtaVersion()
+    func getStoredOtaVersion() throws -> Variant_NullType_String {
+        if let version = otaManager.getStoredOtaVersion() {
+            return .second(version)
+        } else {
+            return .first(NullType.null)
+        }
     }
 
-    func getStoredUnzippedPath() throws -> String? {
-        return otaManager.getStoredUnzippedPath()
+    func getStoredUnzippedPath() throws -> Variant_NullType_String {
+        if let path = otaManager.getStoredUnzippedPath() {
+            return .second(path)
+        } else {
+            return .first(NullType.null)
+        }
     }
 
     func getStoredBundlePath() -> String? {
         return otaManager.getStoredUnzippedPath()
+    }
+    func scheduleBackgroundOTACheck(versionCheckUrl: String, downloadUrl: Variant_NullType_String?, interval: Double) throws -> Void {
+        // Extract the actual download URL string from the Variant (null | string)
+        let downloadUrlString: String?
+        if let variant = downloadUrl {
+            switch variant {
+            case .first:
+                downloadUrlString = nil
+            case .second(let str):
+                downloadUrlString = str
+            }
+        } else {
+            downloadUrlString = nil
+        }
+        
+        print("NitroOta: Scheduling background OTA check")
+        print("NitroOta:   - Version check URL: \(versionCheckUrl)")
+        print("NitroOta:   - Download URL: \(downloadUrlString ?? "nil (will use version check URL)")")
+        print("NitroOta:   - Interval: \(interval) seconds")
+        
+        if versionCheckUrl.isEmpty {
+            print("NitroOta: ERROR - Version check URL is empty")
+            throw NSError(
+                domain: "com.pikachu.NitroOta",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Version check URL cannot be empty"]
+            )
+        }
+        
+        // Cancel any existing timer to prevent multiple schedules
+        BackgroundOTAScheduler.shared.cancelScheduledCheck()
+        
+        // Schedule the background OTA check using native code with URLs from JavaScript
+        BackgroundOTAScheduler.shared.scheduleCheck(
+            interval: interval,
+            versionCheckUrl: versionCheckUrl,
+            downloadUrl: downloadUrlString,
+            otaManager: otaManager
+        )
+        
+        print("NitroOta: Background OTA check scheduled successfully")
+        print("NitroOta:   - Safe to call multiple times (replaces existing schedule)")
+        print("NitroOta:   - Will check for updates and download automatically using native code")
+        print("NitroOta:   - Using URLs provided from JavaScript (not stored preferences)")
+        print("NitroOta:   - Note: iOS background execution is limited by system")
     }
     
   func reloadApp() throws {

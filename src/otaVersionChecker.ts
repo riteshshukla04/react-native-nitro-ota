@@ -67,7 +67,7 @@ function isVersionTargeted(
   targetVersions: OTAVersionConfig['targetVersions'],
   currentAppVersion: string
 ): boolean {
-  if (!targetVersions) {
+  if (!targetVersions || !currentAppVersion) {
     // No target versions specified means all versions are targeted
     return true;
   }

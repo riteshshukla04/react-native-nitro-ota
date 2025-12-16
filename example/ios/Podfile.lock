@@ -8,7 +8,7 @@ PODS:
   - hermes-engine (0.81.1):
     - hermes-engine/Pre-built (= 0.81.1)
   - hermes-engine/Pre-built (0.81.1)
-  - NitroModules (0.29.8):
+  - NitroModules (0.31.10):
     - boost
     - DoubleConversion
     - fast_float
@@ -37,7 +37,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - NitroOta (0.4.0):
+  - NitroOta (0.8.2):
     - boost
     - DoubleConversion
     - fast_float
@@ -2313,6 +2313,8 @@ PODS:
     - React-perflogger (= 0.81.1)
     - React-utils (= 0.81.1)
     - SocketRocket
+  - RNDeviceInfo (15.0.1):
+    - React-Core
   - SocketRocket (0.7.1)
   - SSZipArchive (2.4.3)
   - Yoga (0.0.0)
@@ -2391,6 +2393,7 @@ DEPENDENCIES:
   - ReactAppDependencyProvider (from `build/generated/ios`)
   - ReactCodegen (from `build/generated/ios`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
+  - RNDeviceInfo (from `../node_modules/react-native-device-info`)
   - SocketRocket (~> 0.7.1)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
@@ -2545,6 +2548,8 @@ EXTERNAL SOURCES:
     :path: build/generated/ios
   ReactCommon:
     :path: "../node_modules/react-native/ReactCommon"
+  RNDeviceInfo:
+    :path: "../node_modules/react-native-device-info"
   Yoga:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
@@ -2556,8 +2561,8 @@ SPEC CHECKSUMS:
   fmt: a40bb5bd0294ea969aaaba240a927bd33d878cdd
   glog: 5683914934d5b6e4240e497e0f4a3b42d1854183
   hermes-engine: 4f8246b1f6d79f625e0d99472d1f3a71da4d28ca
-  NitroModules: 73c42f3089bd74f411172ea8e69024aac4a2ac9f
-  NitroOta: c0b7d94ece578a80e52d33b86c4a2c353edeefbd
+  NitroModules: cf8804dafa637b6535c73fd113c3202b11307bfd
+  NitroOta: 9f1a9462262ca542800ee6d4fa7d98a909446571
   RCT-Folly: 846fda9475e61ec7bcbf8a3fe81edfcaeb090669
   RCTDeprecation: c4b9e2fd0ab200e3af72b013ed6113187c607077
   RCTRequired: e97dd5dafc1db8094e63bc5031e0371f092ae92a
@@ -2621,6 +2626,7 @@ SPEC CHECKSUMS:
   ReactAppDependencyProvider: 3eb9096cb139eb433965693bbe541d96eb3d3ec9
   ReactCodegen: 7aaf71af219f9f5daa7ad0c8457f3b148aaed563
   ReactCommon: e5df435ef0892875b7d503fbe3ec73a1a3712049
+  RNDeviceInfo: 36d7f232bfe7c9b5c494cb7793230424ed32c388
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   SSZipArchive: fe6a26b2a54d5a0890f2567b5cc6de5caa600aef
   Yoga: f95f7e60346fa6828def95fbe5017346ccc8940e

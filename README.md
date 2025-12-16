@@ -201,6 +201,21 @@ console.log('Current OTA version:', currentVersion);
 NitroOta.reloadApp();
 ```
 
+## 🔄 Background Updates (Experimental)
+
+> ⚠️ **HIGHLY ALPHA FEATURE** - This feature is experimental and needs thorough testing. Use with caution in production.
+
+Schedule automatic background checks for updates that run periodically:
+
+```typescript
+import { OTAUpdateManager } from 'react-native-nitro-ota';
+
+const otaManager = new OTAUpdateManager(downloadUrl, versionCheckUrl);
+
+// Schedule background check every hour (3600 seconds)
+otaManager.scheduleBackgroundCheck(3600);
+```
+
 ## 📝 Understanding Version Files
 
 ### Basic: `ota.version` (Simple Text)
