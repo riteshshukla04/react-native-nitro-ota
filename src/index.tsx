@@ -222,6 +222,21 @@ export class OTAUpdateManager {
   reloadApp(): void {
     NitroOtaHybridObject.reloadApp();
   }
+
+  /**
+   * Schedules a callback to be executed in the background after the interval
+   * @param callback - The callback to execute
+   * @param interval - The interval in seconds
+   */
+  scheduleBackgroundCheckForUpdates( interval: number): void {
+    const callback = async () => {
+      const result = await this.checkForUpdatesJS();
+      if(result?.hasUpdate){
+        await this.downloadUpdate();
+      }
+    };
+    NitroOtaHybridObject.scheduleJSInBackground(callback, interval);
+  }
 }
 
 export { githubOTA } from './githubUtils';

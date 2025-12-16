@@ -8,6 +8,8 @@
 import Foundation
 import NitroModules
 import SSZipArchive
+import UIKit
+import BackgroundTasks
 
 
 // MARK: - ZipUtils
@@ -614,6 +616,74 @@ class NitroOta: HybridNitroOtaSpec {
 
     func getStoredBundlePath() -> String? {
         return otaManager.getStoredUnzippedPath()
+    }
+    func scheduleJSInBackground(callback: @escaping () -> Promise<Promise<Void>>, interval: Double) throws -> Void {
+        print("NitroOta: Scheduling background task with interval: \(interval) seconds")
+        
+        // Register the background task identifier
+        let taskIdentifier = "com.pikachu.NitroOta.backgroundOTA"
+        
+        // Schedule the background task
+        DispatchQueue.global(qos: .background).async {
+            var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
+            
+            // Begin background task to extend execution time
+            backgroundTaskID = UIApplication.shared.beginBackgroundTask(withName: taskIdentifier) {
+                // Expiration handler - called if system is about to terminate the task
+                print("NitroOta: Background task expiring, cleaning up...")
+                if backgroundTaskID != .invalid {
+                    UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                    backgroundTaskID = .invalid
+                }
+            }
+            
+            // Check if we successfully started a background task
+            guard backgroundTaskID != .invalid else {
+                print("NitroOta: Failed to start background task")
+                return
+            }
+            
+            print("NitroOta: Background task started with ID: \(backgroundTaskID)")
+            
+            // Wait for the specified interval
+            Thread.sleep(forTimeInterval: interval)
+            
+            // Execute the async callback (returns Promise<Promise<Void>>)
+            print("NitroOta: Executing async callback after \(interval) seconds")
+            let outerPromise = callback()
+            
+            // First, await the outer promise to get the inner promise
+            outerPromise.await { outerResult in
+                switch outerResult {
+                case .success(let innerPromise):
+                    // Now await the inner promise
+                    innerPromise.await { innerResult in
+                        switch innerResult {
+                        case .success:
+                            print("NitroOta: Callback completed successfully")
+                        case .failure(let error):
+                            print("NitroOta: Callback failed with error: \(error.localizedDescription)")
+                        }
+                        
+                        // End the background task after callback completes
+                        print("NitroOta: Ending background task")
+                        if backgroundTaskID != .invalid {
+                            UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                            backgroundTaskID = .invalid
+                        }
+                    }
+                case .failure(let error):
+                    print("NitroOta: Outer promise failed with error: \(error.localizedDescription)")
+                    
+                    // End the background task
+                    print("NitroOta: Ending background task")
+                    if backgroundTaskID != .invalid {
+                        UIApplication.shared.endBackgroundTask(backgroundTaskID)
+                        backgroundTaskID = .invalid
+                    }
+                }
+            }
+        }
     }
     
   func reloadApp() throws {

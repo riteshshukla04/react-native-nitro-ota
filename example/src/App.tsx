@@ -67,6 +67,10 @@ export default function App() {
     }
   };
 
+  const handleScheduleBackgroundCheckForUpdates = () => {
+    otaManager.scheduleBackgroundCheckForUpdates(10);
+  };
+
   const handleReloadApp = () => {
     reloadApp();
   };
@@ -88,6 +92,7 @@ export default function App() {
         <Button title="Handle Download" onPress={handleDownload} />
         <Button title="Check for Updates" onPress={handleCheckUpdates} />
         <Button title="Reload App" onPress={handleReloadApp} />
+        <Button title="Schedule Background Check for Updates" onPress={handleScheduleBackgroundCheckForUpdates} />
       </View>
     </View>
   );
