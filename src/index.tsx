@@ -65,7 +65,7 @@ export function getAppVersion(): string {
     // Try to get from react-native-device-info if available
     const DeviceInfo = require('react-native-device-info');
     return DeviceInfo.getVersion();
-  } catch (e) {
+  } catch {
     console.warn(
       'OTA: react-native-device-info not found. Using default app version. Install react-native-device-info for accurate version checking.'
     );

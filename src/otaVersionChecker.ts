@@ -145,7 +145,7 @@ export async function checkOTAVersion(
       }
       versionConfig = jsonData as OTAVersionConfig;
       remoteVersion = versionConfig.version;
-    } catch (error) {
+    } catch {
       // Its a text file, so we need to parse it
     }
   }
