@@ -26,7 +26,7 @@ Pod::Spec.new do |s|
   s.dependency 'React-callinvoker'
   s.dependency 'React-Core'
   s.dependency 'SSZipArchive'
-
+  s.dependency 'NitroOtaBundleManager', s.version.to_s
   # Only load nitrogen files if available (React Native project context)
   nitrogen_path = File.join(__dir__, 'nitrogen/generated/ios/NitroOta+autolinking.rb')
   if File.exist?(nitrogen_path)

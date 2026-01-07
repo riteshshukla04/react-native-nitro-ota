@@ -8,7 +8,7 @@ PODS:
   - hermes-engine (0.81.1):
     - hermes-engine/Pre-built (= 0.81.1)
   - hermes-engine/Pre-built (0.81.1)
-  - NitroModules (0.31.10):
+  - NitroModules (0.32.0):
     - boost
     - DoubleConversion
     - fast_float
@@ -37,7 +37,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - NitroOta (0.8.2):
+  - NitroOta (0.9.1):
     - boost
     - DoubleConversion
     - fast_float
@@ -45,6 +45,7 @@ PODS:
     - glog
     - hermes-engine
     - NitroModules
+    - NitroOtaBundleManager (= 0.9.1)
     - RCT-Folly
     - RCT-Folly/Fabric
     - RCTRequired
@@ -68,6 +69,7 @@ PODS:
     - SocketRocket
     - SSZipArchive
     - Yoga
+  - NitroOtaBundleManager (0.9.1)
   - RCT-Folly (2024.11.18.00):
     - boost
     - DoubleConversion
@@ -2399,6 +2401,7 @@ DEPENDENCIES:
 
 SPEC REPOS:
   trunk:
+    - NitroOtaBundleManager
     - SocketRocket
     - SSZipArchive
 
@@ -2561,8 +2564,9 @@ SPEC CHECKSUMS:
   fmt: a40bb5bd0294ea969aaaba240a927bd33d878cdd
   glog: 5683914934d5b6e4240e497e0f4a3b42d1854183
   hermes-engine: 4f8246b1f6d79f625e0d99472d1f3a71da4d28ca
-  NitroModules: cf8804dafa637b6535c73fd113c3202b11307bfd
-  NitroOta: 9f1a9462262ca542800ee6d4fa7d98a909446571
+  NitroModules: 5ab248c0c4bc0a440414c0a8509dbad55cc7da6c
+  NitroOta: 40823f969e3598127c1f9a563d02149ed6ba7d97
+  NitroOtaBundleManager: aa6d5ce0b1726481fd151a40f270f7de74309caf
   RCT-Folly: 846fda9475e61ec7bcbf8a3fe81edfcaeb090669
   RCTDeprecation: c4b9e2fd0ab200e3af72b013ed6113187c607077
   RCTRequired: e97dd5dafc1db8094e63bc5031e0371f092ae92a
