@@ -1,6 +1,9 @@
 require "json"
 
-package = JSON.parse(File.read(File.join(__dir__, "package.json")))
+# Get the directory where this podspec file is located
+podspec_dir = File.dirname(File.expand_path(__FILE__))
+package_path = File.join(podspec_dir, "package.json")
+package = JSON.parse(File.read(package_path))
 
 Pod::Spec.new do |s|
   s.name         = "NitroOtaBundleManager"
@@ -11,7 +14,7 @@ Pod::Spec.new do |s|
   s.authors      = package["author"]
 
   s.platforms    = { :ios => '13.0' }
-  s.source       = { :git => "https://github.com/riteshshukla04/react-native-nitro-ota.git", :tag => "#{s.version}" }
+  s.source       = { :git => "https://github.com/riteshshukla04/react-native-nitro-ota.git", :tag => "v#{s.version}" }
 
   # Only include the bundle manager file
   s.source_files = "NitroIsolatedBundle/NitroIsolatedBundle.swift"
@@ -19,9 +22,9 @@ Pod::Spec.new do |s|
   # Set module name explicitly
   s.module_name = 'NitroOtaBundleManager'
   
-
-
-  install_modules_dependencies(s)
-  # No other dependencies needed
+  # Swift version
+  s.swift_version = '5.8'
+  
+  # No dependencies needed - standalone module
 end
 
