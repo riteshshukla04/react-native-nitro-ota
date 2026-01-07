@@ -10,8 +10,9 @@ Pod::Spec.new do |s|
   s.license      = package["license"]
   s.authors      = package["author"]
 
-  s.platforms    = { :ios => min_ios_version_supported }
-  s.source       = { :git => "https://github.com/riteshshukla04/react-native-nitro-ota.git", :tag => "#{s.version}" }
+  # Use min_ios_version_supported if available (React Native), otherwise fallback
+  s.platforms    = { :ios => defined?(min_ios_version_supported) ? min_ios_version_supported : '13.0' }
+  s.source       = { :git => "https://github.com/riteshshukla04/react-native-nitro-ota.git", :tag => "v#{s.version}" }
 
 
   s.source_files = [
@@ -26,8 +27,13 @@ Pod::Spec.new do |s|
   s.dependency 'React-Core'
   s.dependency 'SSZipArchive'
 
-  load 'nitrogen/generated/ios/NitroOta+autolinking.rb'
-  add_nitrogen_files(s)
+  # Only load nitrogen files if available (React Native project context)
+  nitrogen_path = File.join(__dir__, 'nitrogen/generated/ios/NitroOta+autolinking.rb')
+  if File.exist?(nitrogen_path)
+    load nitrogen_path
+    add_nitrogen_files(s) if defined?(add_nitrogen_files)
+  end
 
-  install_modules_dependencies(s)
+  # Only call install_modules_dependencies if available (React Native project context)
+  install_modules_dependencies(s) if defined?(install_modules_dependencies)
 end
