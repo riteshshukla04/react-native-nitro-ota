@@ -77,11 +77,6 @@ class MainApplication : Application(), ReactApplication {
 
 ### iOS: NitroOtaBundleManager
 
-1. Add to your `Podfile`:
-
-```ruby
-pod 'NitroOtaBundleManager', :path => '../node_modules/react-native-nitro-ota'
-```
 
 2. Install pods:
 
