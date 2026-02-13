@@ -65,14 +65,62 @@ class NitroOta : HybridNitroOtaSpec() {
     ProcessPhoenix.triggerRebirth(NitroModules.applicationContext!!)
   }
 
-  override fun downloadZipFromUrl(url: String): Promise<String> {
+  override fun downloadZipFromUrl(url: String, onProgress: Variant_NullType__received__Double__total__Double_____Unit?): Promise<String> {
     return Promise.async {
       Log.d("NitroOta", "Starting download from URL: $url")
-      val unzippedPath = otaManager.downloadAndUnzipFromUrl(url, null)
+      val progressCallback: ((Long, Long) -> Unit)? =
+        when (val p = onProgress) {
+          is Variant_NullType__received__Double__total__Double_____Unit.Second ->
+            { received: Long, total: Long -> p.value(received.toDouble(), total.toDouble()) }
+          else -> null
+        }
+      val unzippedPath = otaManager.downloadAndUnzipFromUrl(url, null, progressCallback)
       Log.d("NitroOta", "Unzipped path: $unzippedPath")
       return@async unzippedPath
     }
   }
+  override fun rollbackToPreviousBundle(): Promise<Boolean> {
+    return Promise.async {
+      Log.d("NitroOta", "Rolling back to previous bundle")
+      val success = otaManager.rollbackToPreviousBundle()
+      Log.d("NitroOta", "Rollback result: $success")
+      return@async success
+    }
+  }
+
+  override fun confirmBundle(): Unit {
+    Log.d("NitroOta", "Confirming current bundle as working")
+    otaManager.confirmBundle()
+  }
+
+  override fun getBlacklistedVersions(): Promise<String> {
+    return Promise.async {
+      return@async otaManager.getBlacklistedVersions()
+    }
+  }
+
+  override fun getRollbackHistory(): Promise<String> {
+    return Promise.async {
+      return@async otaManager.getRollbackHistory()
+    }
+  }
+
+  override fun markCurrentBundleAsBad(reason: String): Promise<Unit> {
+    return Promise.async {
+      Log.d("NitroOta", "Marking current bundle as bad, reason: $reason")
+      otaManager.markCurrentBundleAsBad(reason)
+    }
+  }
+
+  override fun getNotifiedRollbackCount(): Double {
+    return otaManager.getNotifiedRollbackCount().toDouble()
+  }
+
+  override fun acknowledgeRollbackHistory(): Unit {
+    Log.d("NitroOta", "Acknowledging rollback history")
+    otaManager.acknowledgeRollbackHistory()
+  }
+
   override fun scheduleBackgroundOTACheck(versionCheckUrl: String, downloadUrl: Variant_NullType_String?, interval: Double): Unit {
     // Extract the actual download URL string from the Variant (null | string)
     val downloadUrlString = downloadUrl?.asSecondOrNull()

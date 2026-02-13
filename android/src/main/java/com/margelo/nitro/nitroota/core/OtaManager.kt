@@ -47,8 +47,13 @@ class OtaManager(
                 }
             }
 
-            // Keep only the first 2 (most recent), delete the rest
-            val dirsToDelete = sortedDirs.drop(2)
+            // Keep only the first 2 (most recent), delete the rest.
+            // Never delete a directory that is currently referenced (current or previous bundle).
+            val currentPath = preferences.getOtaUnzippedPath() ?: ""
+            val previousPath = preferences.getPreviousUnzippedPath() ?: ""
+            val dirsToDelete = sortedDirs.drop(2).filter { dir ->
+                !currentPath.startsWith(dir.absolutePath) && !previousPath.startsWith(dir.absolutePath)
+            }
             Log.d("OtaManager", "Found ${otaDirectories.size} OTA directories, keeping 2 most recent, deleting ${dirsToDelete.size} old ones")
 
             dirsToDelete.forEach { dir ->
@@ -138,7 +143,21 @@ class OtaManager(
      * @return The absolute path to the unzipped directory
      * @throws Exception If download or unzip fails
      */
-    fun downloadAndUnzipFromUrl(downloadUrl: String, versionCheckUrl: String? = null): String {
+    fun downloadAndUnzipFromUrl(downloadUrl: String, versionCheckUrl: String? = null, onProgress: ((Long, Long) -> Unit)? = null): String {
+        // Rotate current bundle to previous slot before downloading a new one
+        val existingPath = preferences.getOtaUnzippedPath()
+        val existingVersion = preferences.getOtaVersion()
+        if (!existingPath.isNullOrEmpty()) {
+            preferences.setPreviousUnzippedPath(existingPath)
+            Log.d("OtaManager", "Rotated current path to previous: $existingPath")
+        }
+        if (!existingVersion.isNullOrEmpty()) {
+            preferences.setPreviousVersion(existingVersion)
+        }
+        // Reset rollback counter on new download; mark as pending validation
+        preferences.setRollbackCount(0)
+        preferences.setPendingValidation(true)
+
         // Store the URLs for future update checks
         preferences.setUpdateDownloadUrl(downloadUrl)
         if (versionCheckUrl != null) {
@@ -153,7 +172,7 @@ class OtaManager(
         try {
             // Download the zip file
             Log.d("OtaManager", "Downloading zip file...")
-            downloadManager.downloadFile(downloadUrl, zipFile)
+            downloadManager.downloadFile(downloadUrl, zipFile, onProgress)
             Log.d("OtaManager", "Download completed, zip file size: ${zipFile.length()} bytes")
 
             // Create directory for unzipped files
@@ -276,6 +295,13 @@ class OtaManager(
         val currentVersion = downloadVersionFromUrl(checkUrl)
         Log.d("OtaManager", "Latest version from URL: $currentVersion")
 
+        // Blacklist check: if this version was previously rolled back, skip it
+        val blacklisted = preferences.getBlacklistedVersions()
+        if (blacklisted.contains(currentVersion)) {
+            Log.w("OtaManager", "Remote version '$currentVersion' is blacklisted (was previously rolled back), skipping update")
+            return false
+        }
+
         // Compare versions
         val hasUpdate = storedVersion != currentVersion
 
@@ -376,5 +402,127 @@ class OtaManager(
     fun clearStoredData() {
         preferences.clearOtaData()
         Log.d("OtaManager", "Cleared stored OTA data from SharedPreferences")
+    }
+
+    // MARK: - Rollback API
+
+    /**
+     * Rolls back to the previous OTA bundle (or resets to original if count > 3 or no previous exists).
+     * Blacklists the current version and logs rollback history.
+     * Call reloadApp() after this to apply the change.
+     * @return true if rollback was performed
+     */
+    fun rollbackToPreviousBundle(): Boolean {
+        val previousPath = preferences.getPreviousUnzippedPath()
+        val previousVersion = preferences.getPreviousVersion()
+        val currentVersion = preferences.getOtaVersion()
+
+        // Blacklist the current (bad) version
+        if (!currentVersion.isNullOrEmpty()) {
+            val blacklist = preferences.getBlacklistedVersions().toMutableList()
+            if (!blacklist.contains(currentVersion)) {
+                blacklist.add(currentVersion)
+                preferences.setBlacklistedVersions(blacklist)
+            }
+        }
+
+        // Increment rollback counter
+        val count = preferences.getRollbackCount() + 1
+        preferences.setRollbackCount(count)
+
+        val effectiveReason = if (count > 3) "max_rollbacks_exceeded" else "manual"
+        val hasPrevious = !previousPath.isNullOrEmpty()
+        val toVersion = if (!hasPrevious || count > 3) "original" else (previousVersion ?: "unknown")
+
+        // Append to rollback history
+        val record = org.json.JSONObject().apply {
+            put("timestamp", System.currentTimeMillis())
+            put("fromVersion", currentVersion ?: "unknown")
+            put("toVersion", toVersion)
+            put("reason", effectiveReason)
+        }
+        preferences.appendRollbackHistory(record)
+
+        // Clear pending validation since we are manually rolling back
+        preferences.setPendingValidation(false)
+
+        return if (count > 3 || !hasPrevious) {
+            // Reset to original app bundle
+            preferences.setOtaUnzippedPath("")
+            preferences.setOtaVersion("")
+            preferences.setRollbackCount(0)
+            Log.w("OtaManager", "Rollback limit exceeded or no previous bundle — reset to original")
+            true
+        } else {
+            // Promote previous bundle to current
+            preferences.setOtaUnzippedPath(previousPath!!)
+            preferences.setOtaVersion(previousVersion ?: "")
+            preferences.setPreviousUnzippedPath("")
+            preferences.setPreviousVersion("")
+            Log.w("OtaManager", "Rolled back from $currentVersion to $previousVersion")
+            true
+        }
+    }
+
+    /**
+     * Confirms the current bundle is working correctly.
+     * Disables the crash-rollback guard for this bundle.
+     */
+    fun confirmBundle() {
+        preferences.setPendingValidation(false)
+        Log.d("OtaManager", "Bundle confirmed — crash guard disabled for this bundle")
+    }
+
+    /**
+     * Returns a JSON-encoded array of blacklisted OTA version strings.
+     */
+    fun getBlacklistedVersions(): String {
+        return preferences.getBlacklistedVersionsJson()
+    }
+
+    /**
+     * Returns a JSON-encoded array of rollback history records.
+     */
+    fun getRollbackHistory(): String {
+        return preferences.getRollbackHistoryJson()
+    }
+
+    /**
+     * Blacklists the current bundle and triggers a rollback with a custom reason.
+     * Call reloadApp() after this to apply.
+     */
+    fun markCurrentBundleAsBad(reason: String) {
+        rollbackToPreviousBundle()
+        // Update the reason in the last history entry to the user-provided reason
+        val historyJson = preferences.getRollbackHistoryJson()
+        try {
+            val arr = org.json.JSONArray(historyJson)
+            if (arr.length() > 0) {
+                val last = arr.getJSONObject(arr.length() - 1)
+                last.put("reason", reason)
+                arr.put(arr.length() - 1, last)
+                preferences.setRollbackHistory(arr.toString())
+            }
+        } catch (e: Exception) {
+            Log.e("OtaManager", "Failed to update rollback reason in history", e)
+        }
+    }
+
+    /** Returns the number of rollback history entries already acknowledged. */
+    fun getNotifiedRollbackCount(): Int {
+        return preferences.getNotifiedRollbackCount()
+    }
+
+    /**
+     * Stores the current rollback history length as "seen".
+     * Call this after notifying the user of any crash rollbacks so the same
+     * entries are not reported again on the next app launch.
+     */
+    fun acknowledgeRollbackHistory() {
+        val count = try {
+            org.json.JSONArray(preferences.getRollbackHistoryJson()).length()
+        } catch (e: Exception) { 0 }
+        preferences.setNotifiedRollbackCount(count)
+        Log.d("OtaManager", "Acknowledged $count rollback history entries")
     }
 }

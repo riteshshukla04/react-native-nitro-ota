@@ -15,7 +15,7 @@ class DownloadManager(private val client: OkHttpClient = OkHttpClient()) {
      * @param outputFile The file to save the downloaded content to
      * @throws IOException If the download fails or response is not successful
      */
-    fun downloadFile(url: String, outputFile: File) {
+    fun downloadFile(url: String, outputFile: File, onProgress: ((Long, Long) -> Unit)? = null) {
         val request = Request.Builder()
             .url(url)
             .build()
@@ -26,10 +26,26 @@ class DownloadManager(private val client: OkHttpClient = OkHttpClient()) {
             }
 
             val body = response.body ?: throw IOException("Response body is null")
+            val contentLength = body.contentLength() // -1 if unknown
 
             FileOutputStream(outputFile).use { output ->
                 body.byteStream().use { input ->
-                    input.copyTo(output)
+                    if (onProgress == null) {
+                        input.copyTo(output)
+                    } else {
+                        val buffer = ByteArray(8 * 1024)
+                        var bytesRead: Int
+                        var totalRead = 0L
+                        while (input.read(buffer).also { bytesRead = it } != -1) {
+                            output.write(buffer, 0, bytesRead)
+                            totalRead += bytesRead
+                            onProgress(totalRead, contentLength)
+                        }
+                        // Final call: received == total signals download complete.
+                        // If contentLength was unknown (-1) this is the first time
+                        // the caller learns the actual size.
+                        onProgress(totalRead, totalRead)
+                    }
                 }
             }
         }
