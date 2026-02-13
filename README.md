@@ -13,6 +13,10 @@ Download, unzip, and apply JavaScript bundle updates at runtime without going th
 - 🌐 **Server Agnostic** - Works with any CDN, S3, GitHub Releases, or custom server
 - 📦 **Automatic Bundle Management** - Handles download, extraction, and cleanup
 - 🔒 **Version Control** - Built-in version checking and management
+- 🛡️ **Crash Safety** - Auto-rollback if a new bundle crashes the app on first launch
+- ↩️ **Rollback** - Manual rollback to the previous bundle with one call
+- 🚫 **Blacklisting** - Bad versions are never re-downloaded
+- 📊 **Download Progress** - Track download progress with a callback
 
 ## 📦 Installation
 
@@ -77,14 +81,13 @@ class MainApplication : Application(), ReactApplication {
 
 ### iOS: NitroOtaBundleManager
 
-
-2. Install pods:
+Install pods:
 
 ```bash
 cd ios && pod install
 ```
 
-3. Update `AppDelegate.swift`:
+Update `AppDelegate.swift`:
 
 ```swift
 import UIKit
@@ -97,15 +100,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         #if DEBUG
         return RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index")
         #else
-        // Check for OTA bundle
-        if let bundlePath = NitroOtaBundleManager.shared.getStoredBundlePath() {
-            let bundleURL = URL(fileURLWithPath: bundlePath)
-
-            return bundleURL
-        }
-
-        // Fallback to default bundle
-        return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
+        // Use OTA bundle if available, otherwise fall back to the bundled file
+        return NitroOtaBundleManager.shared.getStoredBundleURL()
+            ?? Bundle.main.url(forResource: "main", withExtension: "jsbundle")
         #endif
     }
 }
@@ -144,56 +141,199 @@ if (updateInfo?.hasUpdate && updateInfo.isCompatible) {
   await otaManager.downloadUpdate();
   otaManager.reloadApp();
 }
-
-// Get current version
-const currentVersion = otaManager.getVersion();
-console.log('Current OTA version:', currentVersion);
 ```
 
 ### Option 2: Custom Server/CDN
 
-### 1. Download and Apply OTA Update
-
 ```typescript
-import { NitroOta } from 'react-native-nitro-ota';
+import {
+  checkForOTAUpdates,
+  downloadZipFromUrl,
+  reloadApp,
+} from 'react-native-nitro-ota';
 
-// Download and unzip bundle from any server
-const updatePath = await NitroOta.downloadAndUnzipFromUrl(
-  'https://your-cdn.com/bundles/latest.zip',
-  'https://your-cdn.com/bundles/version.txt' // optional version file
-);
-
-console.log('Update downloaded to:', updatePath);
-
-// Restart app to apply update
-// Use your preferred restart method or RN's DevSettings
-```
-
-### 2. Check for Updates
-
-```typescript
-// Check if a new version is available
-const hasUpdate = await NitroOta.checkForUpdates(
-  'https://your-cdn.com/bundles/version.txt'
-);
+const hasUpdate = await checkForOTAUpdates('https://your-cdn.com/ota.version');
 
 if (hasUpdate) {
-  console.log('New version available!');
-  // Download and apply update
+  await downloadZipFromUrl('https://your-cdn.com/bundle.zip');
+  reloadApp();
 }
 ```
 
-### 3. Get Current Version
+## 📊 Download Progress
+
+Track download progress with an optional callback:
 
 ```typescript
-const currentVersion = NitroOta.getStoredOtaVersion();
-console.log('Current OTA version:', currentVersion);
+import { downloadZipFromUrl } from 'react-native-nitro-ota';
+
+await downloadZipFromUrl(
+  'https://your-cdn.com/bundle.zip',
+  (received, total) => {
+    if (total > 0) {
+      const percent = Math.round((received / total) * 100);
+      console.log(`Downloading... ${percent}%`);
+    }
+  }
+);
 ```
 
-### 3. Get Current Version
+Via `OTAUpdateManager`:
 
 ```typescript
-NitroOta.reloadApp();
+await otaManager.downloadUpdate((received, total) => {
+  setProgress(total > 0 ? received / total : -1);
+});
+```
+
+> **Note:** `total` is `-1` when the server does not send a `Content-Length` header.
+
+## 🛡️ Crash Safety & Rollback
+
+### How it works
+
+The library uses a **"pending confirmation" pattern** to protect against bad bundles:
+
+1. A new bundle is downloaded → `ota_pending_validation = true` is stored
+2. On the next app launch, the crash handler activates **only** if `pending_validation == true`
+3. You call `confirmBundle()` after verifying your app works → guard is disabled
+4. If the app crashes while unconfirmed → the crash handler automatically rolls back to the previous bundle, blacklists the bad version, and the next launch uses the restored bundle
+
+> **Important:** Crashes in confirmed bundles are **completely unaffected** — the crash handler passes through to your existing crash reporter (Crashlytics, Sentry, etc.).
+
+### 1. Confirm a bundle after download
+
+```typescript
+import {
+  downloadZipFromUrl,
+  confirmBundle,
+  reloadApp,
+} from 'react-native-nitro-ota';
+
+// After download, the bundle is "pending validation"
+await downloadZipFromUrl(url);
+reloadApp();
+
+// On the new bundle: call confirmBundle() after verifying the app works
+// (e.g. after a successful API call, a key screen loading, etc.)
+confirmBundle();
+```
+
+### 2. Manual rollback
+
+```typescript
+import { rollbackToPreviousBundle, reloadApp } from 'react-native-nitro-ota';
+
+const success = await rollbackToPreviousBundle();
+if (success) {
+  reloadApp(); // restarts on the previous (or original) bundle
+}
+```
+
+### 3. Mark a bundle as bad manually
+
+```typescript
+import { markCurrentBundleAsBad, reloadApp } from 'react-native-nitro-ota';
+
+// Blacklists the current version and rolls back
+await markCurrentBundleAsBad('payment_screen_broken');
+reloadApp();
+```
+
+### 4. Listen for rollback events
+
+Subscribe to rollback events in your app root. The callback fires:
+- **Immediately** if a crash rollback happened during the previous session (detected from persisted history)
+- **In the current session** when `rollbackToPreviousBundle()` or `markCurrentBundleAsBad()` succeeds
+
+```typescript
+import { onRollback } from 'react-native-nitro-ota';
+
+// Register early — e.g. at the top of your App component
+const unsubscribe = onRollback((record) => {
+  console.log('Rollback happened!');
+  console.log('  From version:', record.fromVersion);
+  console.log('  To version:  ', record.toVersion);
+  console.log('  Reason:      ', record.reason);
+  console.log('  Timestamp:   ', new Date(record.timestamp).toISOString());
+
+  // Send to your analytics or show a user-facing notice
+});
+
+// Call unsubscribe() when the component unmounts
+```
+
+`reason` values:
+| Value | Meaning |
+|---|---|
+| `"crash_detected"` | Crash handler auto-rolled back the bundle |
+| `"manual"` | `rollbackToPreviousBundle()` was called |
+| `"max_rollbacks_exceeded"` | Rollback counter > 3; reset to original bundle |
+| custom string | Passed to `markCurrentBundleAsBad(reason)` |
+
+### 5. Check rollback history
+
+```typescript
+import { getRollbackHistory } from 'react-native-nitro-ota';
+
+const history = await getRollbackHistory();
+// [
+//   {
+//     timestamp: 1712345678000,
+//     fromVersion: "2",
+//     toVersion: "1",
+//     reason: "crash_detected"
+//   },
+//   ...
+// ]
+```
+
+### 6. Check & clear the blacklist
+
+```typescript
+import { getBlacklistedVersions } from 'react-native-nitro-ota';
+
+const blacklist = await getBlacklistedVersions();
+console.log('Blacklisted versions:', blacklist); // ["2", "3"]
+```
+
+Blacklisted versions are automatically skipped by `checkForOTAUpdates()` — they will never be downloaded again.
+
+### Rollback limits
+
+| Consecutive rollbacks | Behaviour |
+|---|---|
+| 1–3 | Previous bundle is restored |
+| > 3 | All OTA data cleared; app falls back to the original `.jsbundle` |
+
+The counter resets to 0 whenever a new bundle is successfully downloaded.
+
+### Using `OTAUpdateManager` (class API)
+
+All rollback features are also available on the class:
+
+```typescript
+const otaManager = new OTAUpdateManager(downloadUrl, versionUrl);
+
+// Listen for rollbacks
+const unsub = otaManager.onRollback((record) => {
+  console.log('Rollback:', record.reason);
+});
+
+// Confirm bundle is working
+otaManager.confirm();
+
+// Manual rollback
+const ok = await otaManager.rollback();
+if (ok) otaManager.reloadApp();
+
+// Mark as bad with a custom reason
+await otaManager.markAsBad('checkout_screen_crash');
+otaManager.reloadApp();
+
+// Inspect history and blacklist
+const history = await otaManager.getHistory();
+const blacklist = await otaManager.getBlacklist();
 ```
 
 ## 🔄 Background Updates (Experimental)
@@ -211,11 +351,13 @@ const otaManager = new OTAUpdateManager(downloadUrl, versionCheckUrl);
 otaManager.scheduleBackgroundCheck(3600);
 ```
 
+> **Note:** Android uses WorkManager (minimum 15-minute interval). iOS uses background tasks (behavior depends on iOS version and system conditions).
+
 ## 📝 Understanding Version Files
 
 ### Basic: `ota.version` (Simple Text)
 
-The `ota.version` file is a simple text file that contains your current bundle version. **The version can be anything** - numbers, strings, or even creative identifiers like "apple", "orange", "winter2024", or "bugfix-v3".
+The `ota.version` file is a simple text file that contains your current bundle version. **The version can be anything** - numbers, strings, or creative identifiers like "apple", "winter2024", "bugfix-v3".
 
 ```bash
 echo "1.0.0" > ota.version
@@ -237,16 +379,12 @@ For more control, use the JSON format with semantic versioning and target app ve
 }
 ```
 
-
 **JavaScript API for Advanced Checking:**
 
 ```typescript
 import { checkForOTAUpdatesJS } from 'react-native-nitro-ota';
 
-// Get detailed update info
-const result = await checkForOTAUpdatesJS(
-  'https://example.com/ota.version.json'
-);
+const result = await checkForOTAUpdatesJS('https://example.com/ota.version.json');
 if (result?.hasUpdate && result.isCompatible) {
   console.log(`New version: ${result.remoteVersion}`);
   console.log(`Notes: ${result.metadata?.releaseNotes}`);
@@ -257,11 +395,7 @@ if (result?.hasUpdate && result.isCompatible) {
 
 ## 📦 Creating and Uploading Bundles
 
-Follow these steps to generate and distribute your OTA bundle:
-
 ### 1. Generate the JavaScript Bundle
-
-Run the following commands to create a production-ready bundle and assets for your platform:
 
 #### For Android
 
@@ -285,14 +419,9 @@ npx react-native bundle \
   --assets-dest ios/App-Bundles
 ```
 
-> **Result:**  
-> Your bundles and assets will be generated in `android/App-Bundles/` or `ios/App-Bundles/` respectively.
-
 ---
 
 ### 2. Package the Bundle
-
-After generating the bundle, compress the entire output folder (including the assets) into a single zip file:
 
 ```bash
 # For Android
@@ -306,7 +435,7 @@ cd ios && zip -r App-Bundles.zip App-Bundles
 
 ### 3. Distribute the Bundle
 
-Upload the zipped bundle file to your backend, CDN, or preferred file hosting service so that your app can download it for OTA updates.
+Upload the zipped bundle to your CDN, S3 bucket, GitHub Releases, or any file host.
 
 ---
 
@@ -317,7 +446,59 @@ In the **Jellify App**:
 - Bundles are uploaded to a dedicated Git branch named by version and platform (e.g., [`nitro_0.19.2_android`](https://github.com/Jellify-Music/App-Bundles/tree/nitro_0.19.2_android)).
 - The upload and versioning are automated via [GitHub Actions workflow](https://github.com/Jellify-Music/App/blob/main/.github/workflows/publish-ota-update.yml).
 
-This keeps OTA releases well organized and accessible for deployment.
+## 📚 API Reference
+
+### Functions
+
+| Function | Description |
+|---|---|
+| `checkForOTAUpdates(url)` | Returns `true` if a new version is available |
+| `downloadZipFromUrl(url, onProgress?)` | Downloads and unzips the bundle. Optional progress callback `(received, total) => void` |
+| `getStoredOtaVersion()` | Returns the currently active OTA version string, or `null` |
+| `getStoredUnzippedPath()` | Returns the path to the active bundle file, or `null` |
+| `reloadApp()` | Restarts the app to apply a downloaded bundle |
+| `confirmBundle()` | Marks the current bundle as verified — disables crash guard |
+| `rollbackToPreviousBundle()` | Rolls back to previous bundle; returns `true` on success |
+| `markCurrentBundleAsBad(reason)` | Blacklists current bundle and triggers rollback |
+| `getBlacklistedVersions()` | Returns `string[]` of blacklisted OTA versions |
+| `getRollbackHistory()` | Returns `RollbackHistoryRecord[]` |
+| `onRollback(callback)` | Subscribes to rollback events; returns an unsubscribe function |
+| `checkForOTAUpdatesJS(url?, appVersion?)` | JS-side version check with detailed result |
+| `hasOTAUpdate(url?, appVersion?)` | Simplified compatible-update check |
+
+### `OTAUpdateManager` class
+
+| Method | Description |
+|---|---|
+| `checkForUpdates()` | Native version check |
+| `checkForUpdatesJS(appVersion?)` | JS-side version check |
+| `hasCompatibleUpdate(appVersion?)` | Simple compatible-update check |
+| `downloadUpdate(onProgress?)` | Download with optional progress |
+| `getVersion()` | Current OTA version |
+| `getUnzippedPath()` | Path to active bundle |
+| `reloadApp()` | Restart the app |
+| `confirm()` | Confirm bundle is working |
+| `rollback()` | Roll back to previous bundle |
+| `markAsBad(reason?)` | Blacklist + rollback with custom reason |
+| `getBlacklist()` | List of blacklisted versions |
+| `getHistory()` | Full rollback history |
+| `onRollback(callback)` | Subscribe to rollback events |
+| `scheduleBackgroundCheck(interval)` | Schedule periodic native background check |
+
+### `RollbackHistoryRecord`
+
+```typescript
+interface RollbackHistoryRecord {
+  timestamp: number;       // Unix ms
+  fromVersion: string;     // OTA version that was active
+  toVersion: string;       // Version restored ("original" = no OTA)
+  reason:
+    | 'crash_detected'
+    | 'manual'
+    | 'max_rollbacks_exceeded'
+    | string;              // custom reason from markCurrentBundleAsBad()
+}
+```
 
 ## 🤝 Contributing
 

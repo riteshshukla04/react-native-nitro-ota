@@ -143,7 +143,7 @@ class OtaManager(
      * @return The absolute path to the unzipped directory
      * @throws Exception If download or unzip fails
      */
-    fun downloadAndUnzipFromUrl(downloadUrl: String, versionCheckUrl: String? = null): String {
+    fun downloadAndUnzipFromUrl(downloadUrl: String, versionCheckUrl: String? = null, onProgress: ((Long, Long) -> Unit)? = null): String {
         // Rotate current bundle to previous slot before downloading a new one
         val existingPath = preferences.getOtaUnzippedPath()
         val existingVersion = preferences.getOtaVersion()
@@ -172,7 +172,7 @@ class OtaManager(
         try {
             // Download the zip file
             Log.d("OtaManager", "Downloading zip file...")
-            downloadManager.downloadFile(downloadUrl, zipFile)
+            downloadManager.downloadFile(downloadUrl, zipFile, onProgress)
             Log.d("OtaManager", "Download completed, zip file size: ${zipFile.length()} bytes")
 
             // Create directory for unzipped files
@@ -506,5 +506,23 @@ class OtaManager(
         } catch (e: Exception) {
             Log.e("OtaManager", "Failed to update rollback reason in history", e)
         }
+    }
+
+    /** Returns the number of rollback history entries already acknowledged. */
+    fun getNotifiedRollbackCount(): Int {
+        return preferences.getNotifiedRollbackCount()
+    }
+
+    /**
+     * Stores the current rollback history length as "seen".
+     * Call this after notifying the user of any crash rollbacks so the same
+     * entries are not reported again on the next app launch.
+     */
+    fun acknowledgeRollbackHistory() {
+        val count = try {
+            org.json.JSONArray(preferences.getRollbackHistoryJson()).length()
+        } catch (e: Exception) { 0 }
+        preferences.setNotifiedRollbackCount(count)
+        Log.d("OtaManager", "Acknowledged $count rollback history entries")
     }
 }

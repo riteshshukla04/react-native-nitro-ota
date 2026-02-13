@@ -5,7 +5,10 @@ export interface NitroOta extends HybridObject<{
   android: 'kotlin';
 }> {
   checkForUpdates(versionCheckUrl: string): Promise<boolean>;
-  downloadZipFromUrl(downloadUrl: string): Promise<string>;
+  downloadZipFromUrl(
+    downloadUrl: string,
+    onProgress: ((received: number, total: number) => void) | null
+  ): Promise<string>;
   getStoredOtaVersion(): string | null;
   getStoredUnzippedPath(): string | null;
   reloadApp(): void;
@@ -66,4 +69,18 @@ export interface NitroOta extends HybridObject<{
    * @param reason - A description of why the bundle is being marked as bad
    */
   markCurrentBundleAsBad(reason: string): Promise<void>;
+
+  /**
+   * Returns the number of rollback history entries that have been acknowledged
+   * (seen by the user). New entries beyond this index are unread.
+   */
+  getNotifiedRollbackCount(): number;
+
+  /**
+   * Marks all current rollback history entries as "seen" by storing the
+   * current history length. Call this after you have notified the user of
+   * any crash rollbacks so the same entries are not reported again on
+   * subsequent app launches.
+   */
+  acknowledgeRollbackHistory(): void;
 }

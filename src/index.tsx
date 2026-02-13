@@ -9,6 +9,41 @@ import {
 const NitroOtaHybridObject =
   NitroModules.createHybridObject<NitroOta>('NitroOta');
 
+// ---------------------------------------------------------------------------
+// onRollback listener infrastructure
+// ---------------------------------------------------------------------------
+type RollbackCallback = (record: RollbackHistoryRecord) => void;
+const rollbackListeners = new Set<RollbackCallback>();
+// Cache of crash rollbacks detected from the previous session (loaded once).
+let _crashRollbacksFromPreviousSession: RollbackHistoryRecord[] | null = null;
+
+function _notifyRollback(record: RollbackHistoryRecord) {
+  rollbackListeners.forEach((cb) => cb(record));
+}
+
+async function _loadCrashRollbacksOnce(): Promise<RollbackHistoryRecord[]> {
+  if (_crashRollbacksFromPreviousSession !== null) {
+    return _crashRollbacksFromPreviousSession;
+  }
+  try {
+    const history = await getRollbackHistory();
+    // Only entries beyond the last acknowledged index are "new".
+    // This prevents re-firing the same crash rollback on every subsequent launch.
+    const notifiedCount = NitroOtaHybridObject.getNotifiedRollbackCount();
+    const newEntries = history.slice(notifiedCount).filter(
+      (r) => r.reason === 'crash_detected'
+    );
+    _crashRollbacksFromPreviousSession = newEntries;
+    if (newEntries.length > 0) {
+      // Acknowledge immediately so the next session won't re-report these.
+      NitroOtaHybridObject.acknowledgeRollbackHistory();
+    }
+  } catch {
+    _crashRollbacksFromPreviousSession = [];
+  }
+  return _crashRollbacksFromPreviousSession;
+}
+
 /**
  * A single rollback history record.
  * Stored on-device every time a rollback is performed (crash or manual).
@@ -62,9 +97,12 @@ export function checkForOTAUpdates(versionCheckUrl: string): Promise<boolean> {
   return NitroOtaHybridObject.checkForUpdates(versionCheckUrl);
 }
 
-export function downloadZipFromUrl(downloadUrl: string): Promise<string> {
+export function downloadZipFromUrl(
+  downloadUrl: string,
+  onProgress?: (received: number, total: number) => void
+): Promise<string> {
   console.log('downloadZipFromUrl', downloadUrl);
-  return NitroOtaHybridObject.downloadZipFromUrl(downloadUrl);
+  return NitroOtaHybridObject.downloadZipFromUrl(downloadUrl, onProgress ?? null);
 }
 
 export function getStoredOtaVersion(): string | null {
@@ -89,8 +127,22 @@ export function reloadApp(): void {
  *
  * @returns true if rollback succeeded (previous bundle activated or reset to original)
  */
-export function rollbackToPreviousBundle(): Promise<boolean> {
-  return NitroOtaHybridObject.rollbackToPreviousBundle();
+export async function rollbackToPreviousBundle(): Promise<boolean> {
+  const success = await NitroOtaHybridObject.rollbackToPreviousBundle();
+  if (success) {
+    // Notify listeners with the persisted history entry. Guard separately so
+    // a listener failure never masks the rollback result.
+    try {
+      const history = await getRollbackHistory();
+      const lastRecord = history[history.length - 1];
+      if (lastRecord) {
+        _notifyRollback(lastRecord);
+      }
+    } catch {
+      // Notification is best-effort — do not re-throw.
+    }
+  }
+  return success;
 }
 
 /**
@@ -139,8 +191,55 @@ export async function getRollbackHistory(): Promise<RollbackHistoryRecord[]> {
  * Call reloadApp() after this to apply.
  * @param reason - A description of why the bundle is being marked as bad
  */
-export function markCurrentBundleAsBad(reason: string): Promise<void> {
-  return NitroOtaHybridObject.markCurrentBundleAsBad(reason);
+export async function markCurrentBundleAsBad(reason: string): Promise<void> {
+  await NitroOtaHybridObject.markCurrentBundleAsBad(reason);
+  // Notify listeners with the last history entry (written natively).
+  // Guard separately so a listener failure never masks the original call.
+  try {
+    const history = await getRollbackHistory();
+    const lastRecord = history[history.length - 1];
+    if (lastRecord) {
+      _notifyRollback(lastRecord);
+    }
+  } catch {
+    // Notification is best-effort — do not re-throw.
+  }
+}
+
+/**
+ * Subscribe to rollback events.
+ *
+ * The callback is fired in two situations:
+ *  1. **Crash rollback from the previous session** — if the crash handler
+ *     rolled back the bundle before JS started (detected on first call by
+ *     inspecting the persisted rollback history).
+ *  2. **Manual rollback in the current session** — when
+ *     `rollbackToPreviousBundle()` or `markCurrentBundleAsBad()` is called
+ *     and succeeds.
+ *
+ * @param callback - Receives the `RollbackHistoryRecord` describing the rollback.
+ * @returns An unsubscribe function. Call it to remove the listener.
+ *
+ * @example
+ * ```typescript
+ * const unsubscribe = onRollback((record) => {
+ *   console.log('Rollback!', record.reason, record.fromVersion, '→', record.toVersion);
+ * });
+ * // Later:
+ * unsubscribe();
+ * ```
+ */
+export function onRollback(callback: RollbackCallback): () => void {
+  rollbackListeners.add(callback);
+
+  // Fire any crash rollbacks from the previous session immediately.
+  _loadCrashRollbacksOnce().then((records) => {
+    records.forEach((r) => callback(r));
+  });
+
+  return () => {
+    rollbackListeners.delete(callback);
+  };
 }
 
 /**
@@ -272,12 +371,16 @@ export class OTAUpdateManager {
   }
 
   /**
-   * Downloads and extracts the OTA update
+   * Downloads and extracts the OTA update.
+   * @param onProgress - Optional callback invoked with (bytesReceived, totalBytes)
+   *   during the download. `totalBytes` is -1 if the server does not send Content-Length.
    */
-  async downloadUpdate(): Promise<string> {
+  async downloadUpdate(
+    onProgress?: (received: number, total: number) => void
+  ): Promise<string> {
     try {
       console.log(`OTA: Downloading update from ${this.downloadUrl}`);
-      const path = await downloadZipFromUrl(this.downloadUrl);
+      const path = await downloadZipFromUrl(this.downloadUrl, onProgress);
       console.log(`OTA: Update downloaded to: ${path}`);
       return path;
     } catch (error) {
@@ -357,6 +460,20 @@ export class OTAUpdateManager {
   async markAsBad(reason: string = 'manual'): Promise<void> {
     await markCurrentBundleAsBad(reason);
     console.log('OTA: Bundle marked as bad. Call reloadApp() to apply rollback.');
+  }
+
+  /**
+   * Subscribe to rollback events for this manager's bundle.
+   *
+   * Fires when:
+   * - A crash rollback happened in the previous session (detected on registration).
+   * - `rollback()` or `markAsBad()` is called in the current session.
+   *
+   * @param callback - Receives the `RollbackHistoryRecord` of the rollback event.
+   * @returns An unsubscribe function.
+   */
+  onRollback(callback: (record: RollbackHistoryRecord) => void): () => void {
+    return onRollback(callback);
   }
 
   /**

@@ -186,9 +186,45 @@ class UrlUtils {
 // MARK: - DownloadManager
 
 class DownloadManager {
-    func downloadFile(from url: URL, to destination: URL) throws {
-        let data = try Data(contentsOf: url)
-        try data.write(to: destination)
+    func downloadFile(from url: URL, to destination: URL, onProgress: ((Int64, Int64) -> Void)? = nil) throws {
+        var resultError: Error?
+        let semaphore = DispatchSemaphore(value: 0)
+        var progressObservation: NSKeyValueObservation?
+
+        let task = URLSession.shared.downloadTask(with: url) { tempURL, _, error in
+            progressObservation?.invalidate()
+            progressObservation = nil
+            defer { semaphore.signal() }
+            if let error = error {
+                resultError = error
+                return
+            }
+            guard let tempURL = tempURL else {
+                resultError = NSError(domain: "DownloadManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "No file downloaded"])
+                return
+            }
+            do {
+                if FileManager.default.fileExists(atPath: destination.path) {
+                    try FileManager.default.removeItem(at: destination)
+                }
+                try FileManager.default.moveItem(at: tempURL, to: destination)
+            } catch {
+                resultError = error
+            }
+        }
+
+        if let onProgress = onProgress {
+            progressObservation = task.observe(\.countOfBytesReceived, options: [.new]) { t, _ in
+                onProgress(t.countOfBytesReceived, t.countOfBytesExpectedToReceive)
+            }
+        }
+
+        task.resume()
+        semaphore.wait()
+
+        if let error = resultError {
+            throw error
+        }
     }
 
     func downloadText(from url: URL) throws -> String {
@@ -271,6 +307,7 @@ class PreferencesUtils {
     private var otaBlacklistedVersionsKey: String { "ota_blacklisted_versions_\(appVersion)" }
     private var otaRollbackHistoryKey: String { "ota_rollback_history_\(appVersion)" }
     private var otaPendingValidationKey: String { "ota_pending_validation_\(appVersion)" }
+    private var otaNotifiedRollbackCountKey: String { "ota_notified_rollback_count_\(appVersion)" }
 
     init() {
         userDefaults = UserDefaults(suiteName: suiteName) ?? UserDefaults.standard
@@ -416,6 +453,15 @@ class PreferencesUtils {
         userDefaults.synchronize()
     }
 
+    func getNotifiedRollbackCount() -> Int {
+        return userDefaults.integer(forKey: otaNotifiedRollbackCountKey)
+    }
+
+    func setNotifiedRollbackCount(_ count: Int) {
+        userDefaults.set(count, forKey: otaNotifiedRollbackCountKey)
+        userDefaults.synchronize()
+    }
+
     // MARK: - Bulk operations
     func setOtaData(unzippedPath: String, version: String, downloadUrl: String, versionCheckUrl: String?, bundleName: String?) {
         let updates: [String: Any?] = [
@@ -444,6 +490,7 @@ class PreferencesUtils {
         userDefaults.removeObject(forKey: otaBlacklistedVersionsKey)
         userDefaults.removeObject(forKey: otaRollbackHistoryKey)
         userDefaults.removeObject(forKey: otaPendingValidationKey)
+        userDefaults.removeObject(forKey: otaNotifiedRollbackCountKey)
         userDefaults.synchronize()
     }
 
@@ -626,7 +673,7 @@ class OtaManager {
 
     // MARK: - Public methods
 
-    func downloadAndUnzipFromUrl(_ downloadUrl: String, versionCheckUrl: String?) throws -> String {
+    func downloadAndUnzipFromUrl(_ downloadUrl: String, versionCheckUrl: String?, onProgress: ((Int64, Int64) -> Void)? = nil) throws -> String {
         // Store the URLs for future update checks
         preferences.setUpdateDownloadUrl(downloadUrl)
         if let versionCheckUrl = versionCheckUrl {
@@ -667,7 +714,7 @@ class OtaManager {
                 throw NSError(domain: "OtaManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid download URL"])
             }
             print("OtaManager: Downloading zip file...")
-            try downloadManager.downloadFile(from: downloadURL, to: zipFile)
+            try downloadManager.downloadFile(from: downloadURL, to: zipFile, onProgress: onProgress)
             print("OtaManager: Download completed, zip file size: \(try? FileManager.default.attributesOfItem(atPath: zipFile.path)[.size] as? NSNumber ?? 0) bytes")
 
             // Create directory for unzipped files
@@ -879,6 +926,20 @@ class OtaManager {
         return preferences.getRollbackHistoryJson()
     }
 
+    /// Returns the number of rollback history entries already acknowledged.
+    func getNotifiedRollbackCount() -> Int {
+        return preferences.getNotifiedRollbackCount()
+    }
+
+    /// Stores the current rollback history length as "seen".
+    /// Call this after notifying the user of any crash rollbacks so the same
+    /// entries are not reported again on the next app launch.
+    func acknowledgeRollbackHistory() {
+        let count = getRollbackHistory().count
+        preferences.setNotifiedRollbackCount(count)
+        print("OtaManager: Acknowledged \(count) rollback history entries")
+    }
+
     /// Blacklists the current bundle and triggers a rollback with a custom reason.
     /// Call reloadApp() after this to apply.
     func markCurrentBundleAsBad(reason: String) {
@@ -911,11 +972,17 @@ class NitroOta: HybridNitroOtaSpec {
         }
     }
 
-    func downloadZipFromUrl(downloadUrl: String) throws -> Promise<String> {
+    func downloadZipFromUrl(downloadUrl: String, onProgress: Variant_NullType____received__Double____total__Double_____Void?) throws -> Promise<String> {
         return Promise.async {
             do {
                 print("NitroOta: Starting download from URL: \(downloadUrl)")
-                let unzippedPath = try self.otaManager.downloadAndUnzipFromUrl(downloadUrl, versionCheckUrl: nil)
+                let progressCallback: ((Int64, Int64) -> Void)?
+                if case .second(let cb) = onProgress {
+                    progressCallback = { received, total in cb(Double(received), Double(total)) }
+                } else {
+                    progressCallback = nil
+                }
+                let unzippedPath = try self.otaManager.downloadAndUnzipFromUrl(downloadUrl, versionCheckUrl: nil, onProgress: progressCallback)
                 print("NitroOta: Unzipped path: \(unzippedPath)")
                 return unzippedPath
             } catch {
@@ -1026,6 +1093,14 @@ class NitroOta: HybridNitroOtaSpec {
         return Promise.async {
             return self.otaManager.getRollbackHistory()
         }
+    }
+
+    func getNotifiedRollbackCount() throws -> Double {
+        return Double(otaManager.getNotifiedRollbackCount())
+    }
+
+    func acknowledgeRollbackHistory() throws -> Void {
+        otaManager.acknowledgeRollbackHistory()
     }
 
     func markCurrentBundleAsBad(reason: String) throws -> Promise<Void> {

@@ -43,6 +43,7 @@ class PreferencesUtils(private val sharedPreferences: SharedPreferences, private
     private val OTA_BLACKLISTED_VERSIONS = "ota_blacklisted_versions_$versionCode"
     private val OTA_ROLLBACK_HISTORY = "ota_rollback_history_$versionCode"
     private val OTA_PENDING_VALIDATION = "ota_pending_validation_$versionCode"
+    private val OTA_NOTIFIED_ROLLBACK_COUNT = "ota_notified_rollback_count_$versionCode"
 
     /**
      * Stores the unzipped OTA path.
@@ -205,6 +206,14 @@ class PreferencesUtils(private val sharedPreferences: SharedPreferences, private
         sharedPreferences.edit().putBoolean(OTA_PENDING_VALIDATION, pending).commit()
     }
 
+    fun getNotifiedRollbackCount(): Int {
+        return sharedPreferences.getInt(OTA_NOTIFIED_ROLLBACK_COUNT, 0)
+    }
+
+    fun setNotifiedRollbackCount(count: Int) {
+        sharedPreferences.edit().putInt(OTA_NOTIFIED_ROLLBACK_COUNT, count).apply()
+    }
+
     /**
      * Stores all OTA data at once (useful during download).
      */
@@ -234,6 +243,7 @@ class PreferencesUtils(private val sharedPreferences: SharedPreferences, private
             .remove(OTA_BLACKLISTED_VERSIONS)
             .remove(OTA_ROLLBACK_HISTORY)
             .remove(OTA_PENDING_VALIDATION)
+            .remove(OTA_NOTIFIED_ROLLBACK_COUNT)
             .apply()
     }
 
