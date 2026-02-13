@@ -1,6 +1,6 @@
 {
   "name": "react-native-nitro-ota",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "description": "A package to react-native-nitro-ota",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
