@@ -30,9 +30,9 @@ async function _loadCrashRollbacksOnce(): Promise<RollbackHistoryRecord[]> {
     // Only entries beyond the last acknowledged index are "new".
     // This prevents re-firing the same crash rollback on every subsequent launch.
     const notifiedCount = NitroOtaHybridObject.getNotifiedRollbackCount();
-    const newEntries = history.slice(notifiedCount).filter(
-      (r) => r.reason === 'crash_detected'
-    );
+    const newEntries = history
+      .slice(notifiedCount)
+      .filter((r) => r.reason === 'crash_detected');
     _crashRollbacksFromPreviousSession = newEntries;
     if (newEntries.length > 0) {
       // Acknowledge immediately so the next session won't re-report these.
@@ -102,7 +102,10 @@ export function downloadZipFromUrl(
   onProgress?: (received: number, total: number) => void
 ): Promise<string> {
   console.log('downloadZipFromUrl', downloadUrl);
-  return NitroOtaHybridObject.downloadZipFromUrl(downloadUrl, onProgress ?? null);
+  return NitroOtaHybridObject.downloadZipFromUrl(
+    downloadUrl,
+    onProgress ?? null
+  );
 }
 
 export function getStoredOtaVersion(): string | null {
@@ -459,7 +462,9 @@ export class OTAUpdateManager {
    */
   async markAsBad(reason: string = 'manual'): Promise<void> {
     await markCurrentBundleAsBad(reason);
-    console.log('OTA: Bundle marked as bad. Call reloadApp() to apply rollback.');
+    console.log(
+      'OTA: Bundle marked as bad. Call reloadApp() to apply rollback.'
+    );
   }
 
   /**
