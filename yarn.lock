@@ -3416,9 +3416,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@release-it/conventional-changelog@npm:^10.0.1":
-  version: 10.0.2
-  resolution: "@release-it/conventional-changelog@npm:10.0.2"
+"@release-it/conventional-changelog@npm:^10.0.5":
+  version: 10.0.5
+  resolution: "@release-it/conventional-changelog@npm:10.0.5"
   dependencies:
     "@conventional-changelog/git-client": ^2.5.1
     concat-stream: ^2.0.0
@@ -3429,7 +3429,7 @@ __metadata:
     semver: ^7.7.3
   peerDependencies:
     release-it: ^18.0.0 || ^19.0.0
-  checksum: c47aac3ee029c153b5c65f73f3c6cf1f645ff8607a2e0040d3abef83f4194f982ca7dff7fce126f94259e4a8adfa8dc831dfb652a49b980a1c50a98e34b11d2c
+  checksum: d9e40b3db2eb31c9a17811e2c8404829c3effa7e1d5430dbdc31c06399d0dc79424448d9120e2b5d51ca07302f1213aa1615df5716860d86a0cc158dc8f2b80d
   languageName: node
   linkType: hard
 
@@ -11606,7 +11606,7 @@ __metadata:
     "@expo/config-plugins": ^54.0.4
     "@react-native/babel-preset": 0.81.1
     "@react-native/eslint-config": ^0.81.1
-    "@release-it/conventional-changelog": ^10.0.1
+    "@release-it/conventional-changelog": ^10.0.5
     "@types/jest": ^29.5.14
     "@types/react": ^19.1.0
     commitlint: ^19.8.1
