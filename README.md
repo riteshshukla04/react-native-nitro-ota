@@ -170,9 +170,13 @@ import { downloadZipFromUrl } from 'react-native-nitro-ota';
 await downloadZipFromUrl(
   'https://your-cdn.com/bundle.zip',
   (received, total) => {
-    if (total > 0) {
+    if (received === total) {
+      console.log(`Download complete: ${received} bytes`);
+    } else if (total > 0) {
       const percent = Math.round((received / total) * 100);
       console.log(`Downloading... ${percent}%`);
+    } else {
+      console.log(`Downloading... ${received} bytes`);
     }
   }
 );
@@ -186,7 +190,7 @@ await otaManager.downloadUpdate((received, total) => {
 });
 ```
 
-> **Note:** `total` is `-1` when the server does not send a `Content-Length` header.
+> **Note:** `total` is `-1` during download when the server omits `Content-Length`. The final callback always fires with `received === total` (the actual file size) to signal completion — use this instead of relying on the Promise resolve if you need the final byte count.
 
 ## 🛡️ Crash Safety & Rollback
 

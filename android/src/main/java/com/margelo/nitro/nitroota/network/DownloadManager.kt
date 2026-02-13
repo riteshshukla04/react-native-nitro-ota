@@ -41,6 +41,10 @@ class DownloadManager(private val client: OkHttpClient = OkHttpClient()) {
                             totalRead += bytesRead
                             onProgress(totalRead, contentLength)
                         }
+                        // Final call: received == total signals download complete.
+                        // If contentLength was unknown (-1) this is the first time
+                        // the caller learns the actual size.
+                        onProgress(totalRead, totalRead)
                     }
                 }
             }

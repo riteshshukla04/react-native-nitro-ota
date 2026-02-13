@@ -36,7 +36,14 @@ export default function App() {
   const handleDownload = async () => {
     try {
       const path = await otaManager.downloadUpdate((received, total) => {
-        console.log('Download progress:', received, total);
+        if (received === total) {
+          console.log(`Download complete: ${received} bytes`);
+        } else if (total > 0) {
+          const percent = Math.round((received / total) * 100);
+          console.log(`Downloading: ${percent}% (${received}/${total} bytes)`);
+        } else {
+          console.log(`Downloading: ${received} bytes…`);
+        }
       });
       setResult(`Downloaded to: ${path}`);
 

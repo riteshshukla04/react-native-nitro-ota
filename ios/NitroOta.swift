@@ -208,6 +208,12 @@ class DownloadManager {
                     try FileManager.default.removeItem(at: destination)
                 }
                 try FileManager.default.moveItem(at: tempURL, to: destination)
+                // Final call: received == total signals download complete.
+                if let cb = onProgress,
+                   let attrs = try? FileManager.default.attributesOfItem(atPath: destination.path),
+                   let size = attrs[.size] as? Int64 {
+                    cb(size, size)
+                }
             } catch {
                 resultError = error
             }
