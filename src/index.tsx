@@ -10,6 +10,30 @@ const NitroOtaHybridObject =
   NitroModules.createHybridObject<NitroOta>('NitroOta');
 
 /**
+ * A single rollback history record.
+ * Stored on-device every time a rollback is performed (crash or manual).
+ */
+export interface RollbackHistoryRecord {
+  /** Unix timestamp in milliseconds when the rollback occurred */
+  timestamp: number;
+  /** The OTA version that was active before the rollback */
+  fromVersion: string;
+  /**
+   * The version that was restored.
+   * "original" means the original app bundle (no OTA).
+   */
+  toVersion: string;
+  /**
+   * Why the rollback happened.
+   * "crash_detected" — automatic crash handler triggered rollback
+   * "manual"         — user called rollbackToPreviousBundle()
+   * "max_rollbacks_exceeded" — rollback counter > 3; reset to original bundle
+   * Any other string — custom reason passed to markCurrentBundleAsBad()
+   */
+  reason: 'crash_detected' | 'manual' | 'max_rollbacks_exceeded' | string;
+}
+
+/**
  * Target versions for OTA updates
  */
 export interface OTATargetVersions {
@@ -53,6 +77,70 @@ export function getStoredUnzippedPath(): string | null {
 
 export function reloadApp(): void {
   NitroOtaHybridObject.reloadApp();
+}
+
+/**
+ * Rollback to the previous OTA bundle.
+ *
+ * Blacklists the current (bad) version so it is never re-downloaded.
+ * Increments the consecutive rollback counter. If the counter exceeds 3,
+ * all OTA data is cleared and the original app bundle will be used on next launch.
+ * Call reloadApp() after this to apply the change.
+ *
+ * @returns true if rollback succeeded (previous bundle activated or reset to original)
+ */
+export function rollbackToPreviousBundle(): Promise<boolean> {
+  return NitroOtaHybridObject.rollbackToPreviousBundle();
+}
+
+/**
+ * Confirm that the current OTA bundle is working correctly.
+ *
+ * Call this after verifying that critical app flows work on the new bundle
+ * (e.g., after a successful login or key screen load). Once confirmed, the
+ * automatic crash-rollback guard is disabled for this bundle — future crashes
+ * will not trigger a rollback.
+ *
+ * If you never call this after a new bundle is applied, the crash handler will
+ * roll back the bundle if the app crashes on the next launch.
+ */
+export function confirmBundle(): void {
+  NitroOtaHybridObject.confirmBundle();
+}
+
+/**
+ * Returns the list of blacklisted OTA version strings.
+ * Blacklisted versions will never be downloaded again.
+ */
+export async function getBlacklistedVersions(): Promise<string[]> {
+  const json = await NitroOtaHybridObject.getBlacklistedVersions();
+  try {
+    return JSON.parse(json) as string[];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Returns the rollback history.
+ * Each entry records one rollback event (crash or manual).
+ */
+export async function getRollbackHistory(): Promise<RollbackHistoryRecord[]> {
+  const json = await NitroOtaHybridObject.getRollbackHistory();
+  try {
+    return JSON.parse(json) as RollbackHistoryRecord[];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Manually marks the current bundle as bad, blacklists it, and triggers a rollback.
+ * Call reloadApp() after this to apply.
+ * @param reason - A description of why the bundle is being marked as bad
+ */
+export function markCurrentBundleAsBad(reason: string): Promise<void> {
+  return NitroOtaHybridObject.markCurrentBundleAsBad(reason);
 }
 
 /**
@@ -221,6 +309,54 @@ export class OTAUpdateManager {
    */
   reloadApp(): void {
     NitroOtaHybridObject.reloadApp();
+  }
+
+  /**
+   * Rollback to the previous OTA bundle.
+   * Blacklists the current version so it is not re-downloaded.
+   * Call reloadApp() after this to apply the change.
+   * @returns true if rollback was applied
+   */
+  async rollback(): Promise<boolean> {
+    const success = await rollbackToPreviousBundle();
+    if (success) {
+      console.log('OTA: Rollback successful. Call reloadApp() to apply.');
+    }
+    return success;
+  }
+
+  /**
+   * Confirm the current OTA bundle is working correctly.
+   * Disables the automatic crash-rollback guard for this bundle.
+   * Call this after verifying critical flows work on the new bundle.
+   */
+  confirm(): void {
+    confirmBundle();
+    console.log('OTA: Bundle confirmed as working.');
+  }
+
+  /**
+   * Returns the list of blacklisted OTA version strings.
+   */
+  async getBlacklist(): Promise<string[]> {
+    return getBlacklistedVersions();
+  }
+
+  /**
+   * Returns the rollback history.
+   */
+  async getHistory(): Promise<RollbackHistoryRecord[]> {
+    return getRollbackHistory();
+  }
+
+  /**
+   * Manually marks the current bundle as bad, blacklists it, and triggers a rollback.
+   * Call reloadApp() after this to apply.
+   * @param reason - Why the bundle is being marked as bad (default: 'manual')
+   */
+  async markAsBad(reason: string = 'manual'): Promise<void> {
+    await markCurrentBundleAsBad(reason);
+    console.log('OTA: Bundle marked as bad. Call reloadApp() to apply rollback.');
   }
 
   /**

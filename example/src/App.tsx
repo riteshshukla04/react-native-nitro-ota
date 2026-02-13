@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useEffect, useState } from 'react';
 import { Text, View, StyleSheet, Button, Alert } from 'react-native';
-import { OTAUpdateManager, githubOTA, reloadApp } from 'react-native-nitro-ota';
+import { OTAUpdateManager, getRollbackHistory, githubOTA, reloadApp, type RollbackHistoryRecord } from 'react-native-nitro-ota';
 
 const githubUrl = 'https://github.com/riteshshukla04/nitro-ota-bundle';
 const otaVersionPath = 'ota.version';
@@ -11,7 +11,7 @@ export default function App() {
   const [result, setResult] = useState<string | null>(null);
   const [otaVersion, setOtaVersion] = useState<string | null>(null);
   const [unzippedPath, setUnzippedPath] = useState<string | null>(null);
-
+  const [history, setHistory] = useState<{rollbackHistory: RollbackHistoryRecord[], badVersions: string[]} | null>(null);
   // Initialize OTA manager with download URL and version check URL
   const otaManager = new OTAUpdateManager(
     githubOTA({ githubUrl, otaVersionPath, ref }).downloadUrl,
@@ -87,6 +87,14 @@ export default function App() {
     reloadApp();
   };
 
+  const handleGetRollbackHistory = async () => {
+    const historsssy = await getRollbackHistory();
+    const badVersions = await otaManager.getBlacklist();
+    console.log('Rollback history:', historsssy);
+    console.log('Bad versions:', badVersions);
+    setHistory({rollbackHistory: historsssy, badVersions: badVersions});
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>OTA Download Demo</Text>
@@ -99,6 +107,7 @@ export default function App() {
 
       <Text style={styles.label}>Last Downloading Result:</Text>
       <Text style={styles.value}>{result || 'None'}</Text>
+      <Text style={styles.value}> { JSON.stringify(history) || 'None'}</Text>
 
       <View style={styles.buttonContainer}>
         <Button title="Handle Download" onPress={handleDownload} />
@@ -108,6 +117,7 @@ export default function App() {
           title="Schedule Background Check for Updates"
           onPress={handleScheduleBackgroundCheckForUpdates}
         />
+        <Button title="Get Rollback History" onPress={handleGetRollbackHistory} />
       </View>
     </View>
   );

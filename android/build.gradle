@@ -24,8 +24,6 @@ apply plugin: "com.android.library"
 apply plugin: "kotlin-android"
 apply from: '../nitrogen/generated/android/nitroota+autolinking.gradle'
 
-apply plugin: "com.facebook.react"
-
 def getExtOrIntegerDefault(name) {
   return rootProject.ext.has(name) ? rootProject.ext.get(name) : (project.properties["NitroOta_" + name]).toInteger()
 }
@@ -38,7 +36,6 @@ android {
   defaultConfig {
     minSdkVersion getExtOrIntegerDefault("minSdkVersion")
     targetSdkVersion getExtOrIntegerDefault("targetSdkVersion")
-
     externalNativeBuild {
       cmake {
         cppFlags "-frtti -fexceptions -Wall -fstack-protector-all"
@@ -122,7 +119,10 @@ repositories {
 def kotlin_version = getExtOrDefault("kotlinVersion")
 
 dependencies {
-  implementation "com.facebook.react:react-android"
+  // React Native Android APIs are provided by the app.
+  // Use compileOnly so this library does not package React into its AAR,
+  // avoiding duplicate fbreact.specs/* classes at app merge time.
+  compileOnly("com.facebook.react:react-android")
   implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
   implementation project(":react-native-nitro-modules")
   implementation 'com.jakewharton:process-phoenix:3.0.0'

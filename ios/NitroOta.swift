@@ -264,6 +264,13 @@ class PreferencesUtils {
     private var otaUpdateDownloadUrlKey: String { "ota_update_download_url_\(appVersion)" }
     private var otaUpdateVersionCheckUrlKey: String { "ota_update_version_check_url_\(appVersion)" }
     private var otaBundleNameKey: String { "ota_bundle_name_\(appVersion)" }
+    // Rollback keys (shared with NitroOtaPreferences in NitroIsolatedBundle - same suite, same keys)
+    private var otaPreviousUnzippedPathKey: String { "ota_previous_unzipped_path_\(appVersion)" }
+    private var otaPreviousVersionKey: String { "ota_previous_version_\(appVersion)" }
+    private var otaRollbackCountKey: String { "ota_rollback_count_\(appVersion)" }
+    private var otaBlacklistedVersionsKey: String { "ota_blacklisted_versions_\(appVersion)" }
+    private var otaRollbackHistoryKey: String { "ota_rollback_history_\(appVersion)" }
+    private var otaPendingValidationKey: String { "ota_pending_validation_\(appVersion)" }
 
     init() {
         userDefaults = UserDefaults(suiteName: suiteName) ?? UserDefaults.standard
@@ -316,6 +323,99 @@ class PreferencesUtils {
         return userDefaults.string(forKey: otaBundleNameKey)
     }
 
+    // MARK: - Rollback getters/setters
+
+    func getPreviousUnzippedPath() -> String? {
+        return userDefaults.string(forKey: otaPreviousUnzippedPathKey)
+    }
+
+    func setPreviousUnzippedPath(_ path: String) {
+        userDefaults.set(path, forKey: otaPreviousUnzippedPathKey)
+        userDefaults.synchronize()
+    }
+
+    func getPreviousVersion() -> String? {
+        return userDefaults.string(forKey: otaPreviousVersionKey)
+    }
+
+    func setPreviousVersion(_ version: String) {
+        userDefaults.set(version, forKey: otaPreviousVersionKey)
+        userDefaults.synchronize()
+    }
+
+    func getRollbackCount() -> Int {
+        return userDefaults.integer(forKey: otaRollbackCountKey)
+    }
+
+    func setRollbackCount(_ count: Int) {
+        userDefaults.set(count, forKey: otaRollbackCountKey)
+        userDefaults.synchronize()
+    }
+
+    func getBlacklistedVersions() -> [String] {
+        guard let json = userDefaults.string(forKey: otaBlacklistedVersionsKey),
+              let data = json.data(using: .utf8),
+              let arr = try? JSONSerialization.jsonObject(with: data) as? [String] else {
+            return []
+        }
+        return arr
+    }
+
+    func setBlacklistedVersions(_ versions: [String]) {
+        if let data = try? JSONSerialization.data(withJSONObject: versions),
+           let json = String(data: data, encoding: .utf8) {
+            userDefaults.set(json, forKey: otaBlacklistedVersionsKey)
+            userDefaults.synchronize()
+        }
+    }
+
+    func getBlacklistedVersionsJson() -> String {
+        guard let json = userDefaults.string(forKey: otaBlacklistedVersionsKey) else {
+            return "[]"
+        }
+        return json
+    }
+
+    func getRollbackHistory() -> [[String: Any]] {
+        guard let json = userDefaults.string(forKey: otaRollbackHistoryKey),
+              let data = json.data(using: .utf8),
+              let arr = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+            return []
+        }
+        return arr
+    }
+
+    func getRollbackHistoryJson() -> String {
+        return userDefaults.string(forKey: otaRollbackHistoryKey) ?? "[]"
+    }
+
+    func appendRollbackHistory(_ record: [String: Any]) {
+        var history = getRollbackHistory()
+        history.append(record)
+        if let data = try? JSONSerialization.data(withJSONObject: history),
+           let json = String(data: data, encoding: .utf8) {
+            userDefaults.set(json, forKey: otaRollbackHistoryKey)
+            userDefaults.synchronize()
+        }
+    }
+
+    func setRollbackHistory(_ history: [[String: Any]]) {
+        if let data = try? JSONSerialization.data(withJSONObject: history),
+           let json = String(data: data, encoding: .utf8) {
+            userDefaults.set(json, forKey: otaRollbackHistoryKey)
+            userDefaults.synchronize()
+        }
+    }
+
+    func isPendingValidation() -> Bool {
+        return userDefaults.bool(forKey: otaPendingValidationKey)
+    }
+
+    func setPendingValidation(_ pending: Bool) {
+        userDefaults.set(pending, forKey: otaPendingValidationKey)
+        userDefaults.synchronize()
+    }
+
     // MARK: - Bulk operations
     func setOtaData(unzippedPath: String, version: String, downloadUrl: String, versionCheckUrl: String?, bundleName: String?) {
         let updates: [String: Any?] = [
@@ -338,6 +438,12 @@ class PreferencesUtils {
         userDefaults.removeObject(forKey: otaUpdateDownloadUrlKey)
         userDefaults.removeObject(forKey: otaUpdateVersionCheckUrlKey)
         userDefaults.removeObject(forKey: otaBundleNameKey)
+        userDefaults.removeObject(forKey: otaPreviousUnzippedPathKey)
+        userDefaults.removeObject(forKey: otaPreviousVersionKey)
+        userDefaults.removeObject(forKey: otaRollbackCountKey)
+        userDefaults.removeObject(forKey: otaBlacklistedVersionsKey)
+        userDefaults.removeObject(forKey: otaRollbackHistoryKey)
+        userDefaults.removeObject(forKey: otaPendingValidationKey)
         userDefaults.synchronize()
     }
 
@@ -400,7 +506,12 @@ class OtaManager {
             }
 
             // Keep only the first 2 (most recent), delete the rest
-            let dirsToDelete = Array(sortedDirs.dropFirst(2))
+            // But never delete a directory that is currently referenced (current or previous bundle)
+            let currentPath = preferences.getOtaUnzippedPath() ?? ""
+            let previousPath = preferences.getPreviousUnzippedPath() ?? ""
+            let dirsToDelete = Array(sortedDirs.dropFirst(2)).filter { dir in
+                !currentPath.hasPrefix(dir.path) && !previousPath.hasPrefix(dir.path)
+            }
             print("OtaManager: Found \(filteredDirs.count) OTA directories, keeping 2 most recent, deleting \(dirsToDelete.count) old ones")
 
             for dir in dirsToDelete {
@@ -538,6 +649,18 @@ class OtaManager {
             }
         }
 
+        // Rotate current bundle to previous slot before downloading new one
+        if let existingPath = preferences.getOtaUnzippedPath(), !existingPath.isEmpty {
+            preferences.setPreviousUnzippedPath(existingPath)
+            print("OtaManager: Rotated current path to previous: \(existingPath)")
+        }
+        if let existingVersion = preferences.getOtaVersion(), !existingVersion.isEmpty {
+            preferences.setPreviousVersion(existingVersion)
+        }
+        // Reset rollback counter on new successful download; mark as pending validation
+        preferences.setRollbackCount(0)
+        preferences.setPendingValidation(true)
+
         do {
             // Download the zip file
             guard let downloadURL = URL(string: downloadUrl) else {
@@ -662,6 +785,13 @@ class OtaManager {
         let currentVersion = try downloadVersionFromUrl(checkUrl)
         print("OtaManager: Latest version from URL: \(currentVersion)")
 
+        // Blacklist check: if this version was previously rolled back, skip it
+        let blacklisted = preferences.getBlacklistedVersions()
+        if blacklisted.contains(currentVersion) {
+            print("OtaManager: Remote version '\(currentVersion)' is blacklisted (was previously rolled back), skipping update")
+            return false
+        }
+
         // Compare versions
         let hasUpdate = storedVersion != currentVersion
 
@@ -673,6 +803,92 @@ class OtaManager {
     func clearStoredData() {
         preferences.clearOtaData()
         print("OtaManager: Cleared stored OTA data from UserDefaults")
+    }
+
+    // MARK: - Rollback API
+
+    /// Rolls back to the previous OTA bundle (or resets to original if count > 3 or no previous exists).
+    /// Blacklists the current version and logs rollback history.
+    /// Call reloadApp() after this to apply the change.
+    func rollbackToPreviousBundle() -> Bool {
+        let previousPath = preferences.getPreviousUnzippedPath()
+        let previousVersion = preferences.getPreviousVersion()
+        let currentVersion = preferences.getOtaVersion()
+
+        // Blacklist the current (bad) version
+        if let badVersion = currentVersion, !badVersion.isEmpty {
+            var blacklist = preferences.getBlacklistedVersions()
+            if !blacklist.contains(badVersion) {
+                blacklist.append(badVersion)
+                preferences.setBlacklistedVersions(blacklist)
+            }
+        }
+
+        // Increment rollback counter
+        let count = preferences.getRollbackCount() + 1
+        preferences.setRollbackCount(count)
+
+        let effectiveReason: String = count > 3 ? "max_rollbacks_exceeded" : "manual"
+        let hasPrevious = previousPath != nil && !previousPath!.isEmpty
+        let toVersion = (count > 3 || !hasPrevious) ? "original" : (previousVersion ?? "unknown")
+
+        // Append to rollback history
+        preferences.appendRollbackHistory([
+            "timestamp": Int(Date().timeIntervalSince1970 * 1000),
+            "fromVersion": currentVersion ?? "unknown",
+            "toVersion": toVersion,
+            "reason": effectiveReason
+        ])
+
+        // Also ask the native crash handler to update its state
+        // (clear pending_validation since we are manually rolling back)
+        preferences.setPendingValidation(false)
+
+        if count > 3 || !hasPrevious {
+            // Reset to original app bundle
+            preferences.setOtaUnzippedPath("")
+            preferences.setOtaVersion("")
+            preferences.setRollbackCount(0)
+            print("OtaManager: Rollback limit exceeded or no previous bundle — reset to original")
+        } else {
+            // Promote previous bundle to current
+            preferences.setOtaUnzippedPath(previousPath!)
+            preferences.setOtaVersion(previousVersion ?? "")
+            preferences.setPreviousUnzippedPath("")
+            preferences.setPreviousVersion("")
+            print("OtaManager: Rolled back from \(currentVersion ?? "unknown") to \(previousVersion ?? "unknown")")
+        }
+
+        return true
+    }
+
+    /// Confirms the current bundle is working correctly.
+    /// Disables the crash-rollback guard for this bundle.
+    func confirmBundle() {
+        preferences.setPendingValidation(false)
+        print("OtaManager: Bundle confirmed — crash guard disabled for this bundle")
+    }
+
+    /// Returns a JSON-encoded array of blacklisted OTA version strings.
+    func getBlacklistedVersions() -> String {
+        return preferences.getBlacklistedVersionsJson()
+    }
+
+    /// Returns a JSON-encoded array of rollback history records.
+    func getRollbackHistory() -> String {
+        return preferences.getRollbackHistoryJson()
+    }
+
+    /// Blacklists the current bundle and triggers a rollback with a custom reason.
+    /// Call reloadApp() after this to apply.
+    func markCurrentBundleAsBad(reason: String) {
+        _ = rollbackToPreviousBundle()
+        // Update the reason in the last history entry to reflect the user-provided reason
+        var history = preferences.getRollbackHistory()
+        if !history.isEmpty {
+            history[history.count - 1]["reason"] = reason
+            preferences.setRollbackHistory(history)
+        }
     }
 }
 
@@ -786,5 +1002,37 @@ class NitroOta: HybridNitroOtaSpec {
       }
     }
   }
+
+    func rollbackToPreviousBundle() throws -> Promise<Bool> {
+        return Promise.async {
+            print("NitroOta: Rolling back to previous bundle")
+            let success = self.otaManager.rollbackToPreviousBundle()
+            print("NitroOta: Rollback result: \(success)")
+            return success
+        }
+    }
+
+    func confirmBundle() throws {
+        otaManager.confirmBundle()
+    }
+
+    func getBlacklistedVersions() throws -> Promise<String> {
+        return Promise.async {
+            return self.otaManager.getBlacklistedVersions()
+        }
+    }
+
+    func getRollbackHistory() throws -> Promise<String> {
+        return Promise.async {
+            return self.otaManager.getRollbackHistory()
+        }
+    }
+
+    func markCurrentBundleAsBad(reason: String) throws -> Promise<Void> {
+        return Promise.async {
+            print("NitroOta: Marking current bundle as bad, reason: \(reason)")
+            self.otaManager.markCurrentBundleAsBad(reason: reason)
+        }
+    }
 }
 
