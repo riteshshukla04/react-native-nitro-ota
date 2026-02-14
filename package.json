@@ -172,5 +172,8 @@
     "languages": "kotlin-swift",
     "type": "nitro-module",
     "version": "0.54.6"
+  },
+  "dependencies": {
+    "react-native-nitro-ota": "^0.10.1"
   }
 }

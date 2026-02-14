@@ -11596,16 +11596,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-nitro-modules@npm:0.32.0":
-  version: 0.32.0
-  resolution: "react-native-nitro-modules@npm:0.32.0"
-  peerDependencies:
-    react: "*"
-    react-native: "*"
-  checksum: cad3e8fa3aba6a052e9be54a1dda5080eeba320c8f1ccbed663a4de21f4c6b5df6d3732ba703fdb341a81beca8ee7a51fe17da666c07bee67d97347d0bf11887
-  languageName: node
-  linkType: hard
-
 "react-native-nitro-modules@npm:^0.32.0, react-native-nitro-modules@npm:^0.32.2":
   version: 0.32.2
   resolution: "react-native-nitro-modules@npm:0.32.2"
@@ -11613,6 +11603,16 @@ __metadata:
     react: "*"
     react-native: "*"
   checksum: 19cf02168699bbeaa3bc45bf0af1eaa6877a5fde3b22adc759516d3a3103c77754d3e13a8fe6e16782d34d019fe61f4240a6abc5a483a23a93c998853416cc70
+  languageName: node
+  linkType: hard
+
+"react-native-nitro-modules@npm:^0.33.9":
+  version: 0.33.9
+  resolution: "react-native-nitro-modules@npm:0.33.9"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: b9f1ebe7621f600046e0c4701e33f3a038a256fdca84394011cdf431bbf7d142a28f2fa042df4f78b8c879740697ff53e0afca933316063eee0f24f27e920131
   languageName: node
   linkType: hard
 
@@ -11635,11 +11635,11 @@ __metadata:
     react-native-builder-bob: ^0.40.13
     react-native-device-info: ^15.0.1
     react-native-monorepo-config: ^0.1.9
-    react-native-nitro-modules: 0.32.0
+    react-native-nitro-modules: ^0.33.9
   languageName: unknown
   linkType: soft
 
-"react-native-nitro-ota@workspace:.":
+"react-native-nitro-ota@^0.10.1, react-native-nitro-ota@workspace:.":
   version: 0.0.0-use.local
   resolution: "react-native-nitro-ota@workspace:."
   dependencies:
@@ -11668,6 +11668,7 @@ __metadata:
     react-native: 0.81.1
     react-native-builder-bob: ^0.40.13
     react-native-nitro-modules: ^0.32.0
+    react-native-nitro-ota: ^0.10.1
     release-it: ^19.0.4
     turbo: ^2.5.6
     typescript: ^5.9.2
