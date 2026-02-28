@@ -99,12 +99,14 @@ export function checkForOTAUpdates(versionCheckUrl: string): Promise<boolean> {
 
 export function downloadZipFromUrl(
   downloadUrl: string,
-  onProgress?: (received: number, total: number) => void
+  onProgress?: (received: number, total: number) => void,
+  bundleFilePath?: string
 ): Promise<string> {
   console.log('downloadZipFromUrl', downloadUrl);
   return NitroOtaHybridObject.downloadZipFromUrl(
     downloadUrl,
-    onProgress ?? null
+    onProgress ?? null,
+    bundleFilePath ?? null
   );
 }
 
@@ -379,11 +381,16 @@ export class OTAUpdateManager {
    *   during the download. `totalBytes` is -1 if the server does not send Content-Length.
    */
   async downloadUpdate(
-    onProgress?: (received: number, total: number) => void
+    onProgress?: (received: number, total: number) => void,
+    bundleFilePath?: string
   ): Promise<string> {
     try {
       console.log(`OTA: Downloading update from ${this.downloadUrl}`);
-      const path = await downloadZipFromUrl(this.downloadUrl, onProgress);
+      const path = await downloadZipFromUrl(
+        this.downloadUrl,
+        onProgress,
+        bundleFilePath
+      );
       console.log(`OTA: Update downloaded to: ${path}`);
       return path;
     } catch (error) {

@@ -160,6 +160,32 @@ if (hasUpdate) {
 }
 ```
 
+### Custom Bundle File Path
+
+By default the library auto-detects the bundle file inside the zip by scanning for `.bundle` (Android) or `.jsbundle` (iOS). If your zip uses a different file name or extension, pass the relative path as the third argument:
+
+```typescript
+// Bundle is at the zip root with a .js extension
+await downloadZipFromUrl(
+  'https://your-cdn.com/bundle.zip',
+  undefined, // no progress callback
+  'index.js'
+);
+
+// Bundle is inside a subfolder
+await downloadZipFromUrl(
+  'https://your-cdn.com/bundle.zip',
+  (received, total) => console.log(`${received}/${total}`),
+  'build/main.bundle'
+);
+
+// Using OTAUpdateManager
+const otaManager = new OTAUpdateManager(downloadUrl, versionUrl);
+await otaManager.downloadUpdate(undefined, 'dist/index.js');
+```
+
+When omitted (or `undefined`), the existing auto-detection logic is used — no changes needed for existing setups.
+
 ## 📊 Download Progress
 
 Track download progress with an optional callback:
@@ -247,6 +273,7 @@ reloadApp();
 ### 4. Listen for rollback events
 
 Subscribe to rollback events in your app root. The callback fires:
+
 - **Immediately** if a crash rollback happened during the previous session (detected from persisted history)
 - **In the current session** when `rollbackToPreviousBundle()` or `markCurrentBundleAsBad()` succeeds
 
@@ -305,10 +332,10 @@ Blacklisted versions are automatically skipped by `checkForOTAUpdates()` — the
 
 ### Rollback limits
 
-| Consecutive rollbacks | Behaviour |
-|---|---|
-| 1–3 | Previous bundle is restored |
-| > 3 | All OTA data cleared; app falls back to the original `.jsbundle` |
+| Consecutive rollbacks | Behaviour                                                        |
+| --------------------- | ---------------------------------------------------------------- |
+| 1–3                   | Previous bundle is restored                                      |
+| > 3                   | All OTA data cleared; app falls back to the original `.jsbundle` |
 
 The counter resets to 0 whenever a new bundle is successfully downloaded.
 
@@ -388,7 +415,9 @@ For more control, use the JSON format with semantic versioning and target app ve
 ```typescript
 import { checkForOTAUpdatesJS } from 'react-native-nitro-ota';
 
-const result = await checkForOTAUpdatesJS('https://example.com/ota.version.json');
+const result = await checkForOTAUpdatesJS(
+  'https://example.com/ota.version.json'
+);
 if (result?.hasUpdate && result.isCompatible) {
   console.log(`New version: ${result.remoteVersion}`);
   console.log(`Notes: ${result.metadata?.releaseNotes}`);
@@ -454,53 +483,49 @@ In the **Jellify App**:
 
 ### Functions
 
-| Function | Description |
-|---|---|
-| `checkForOTAUpdates(url)` | Returns `true` if a new version is available |
-| `downloadZipFromUrl(url, onProgress?)` | Downloads and unzips the bundle. Optional progress callback `(received, total) => void` |
-| `getStoredOtaVersion()` | Returns the currently active OTA version string, or `null` |
-| `getStoredUnzippedPath()` | Returns the path to the active bundle file, or `null` |
-| `reloadApp()` | Restarts the app to apply a downloaded bundle |
-| `confirmBundle()` | Marks the current bundle as verified — disables crash guard |
-| `rollbackToPreviousBundle()` | Rolls back to previous bundle; returns `true` on success |
-| `markCurrentBundleAsBad(reason)` | Blacklists current bundle and triggers rollback |
-| `getBlacklistedVersions()` | Returns `string[]` of blacklisted OTA versions |
-| `getRollbackHistory()` | Returns `RollbackHistoryRecord[]` |
-| `onRollback(callback)` | Subscribes to rollback events; returns an unsubscribe function |
-| `checkForOTAUpdatesJS(url?, appVersion?)` | JS-side version check with detailed result |
-| `hasOTAUpdate(url?, appVersion?)` | Simplified compatible-update check |
+| Function                                                | Description                                                                                                                                                                                                                                                |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `checkForOTAUpdates(url)`                               | Returns `true` if a new version is available                                                                                                                                                                                                               |
+| `downloadZipFromUrl(url, onProgress?, bundleFilePath?)` | Downloads and unzips the bundle. Optional progress callback `(received, total) => void`. Optional `bundleFilePath` is the relative path to the bundle file inside the zip (e.g. `"index.js"`, `"build/main.bundle"`); when omitted, auto-detection is used |
+| `getStoredOtaVersion()`                                 | Returns the currently active OTA version string, or `null`                                                                                                                                                                                                 |
+| `getStoredUnzippedPath()`                               | Returns the path to the active bundle file, or `null`                                                                                                                                                                                                      |
+| `reloadApp()`                                           | Restarts the app to apply a downloaded bundle                                                                                                                                                                                                              |
+| `confirmBundle()`                                       | Marks the current bundle as verified — disables crash guard                                                                                                                                                                                                |
+| `rollbackToPreviousBundle()`                            | Rolls back to previous bundle; returns `true` on success                                                                                                                                                                                                   |
+| `markCurrentBundleAsBad(reason)`                        | Blacklists current bundle and triggers rollback                                                                                                                                                                                                            |
+| `getBlacklistedVersions()`                              | Returns `string[]` of blacklisted OTA versions                                                                                                                                                                                                             |
+| `getRollbackHistory()`                                  | Returns `RollbackHistoryRecord[]`                                                                                                                                                                                                                          |
+| `onRollback(callback)`                                  | Subscribes to rollback events; returns an unsubscribe function                                                                                                                                                                                             |
+| `checkForOTAUpdatesJS(url?, appVersion?)`               | JS-side version check with detailed result                                                                                                                                                                                                                 |
+| `hasOTAUpdate(url?, appVersion?)`                       | Simplified compatible-update check                                                                                                                                                                                                                         |
 
 ### `OTAUpdateManager` class
 
-| Method | Description |
-|---|---|
-| `checkForUpdates()` | Native version check |
-| `checkForUpdatesJS(appVersion?)` | JS-side version check |
-| `hasCompatibleUpdate(appVersion?)` | Simple compatible-update check |
-| `downloadUpdate(onProgress?)` | Download with optional progress |
-| `getVersion()` | Current OTA version |
-| `getUnzippedPath()` | Path to active bundle |
-| `reloadApp()` | Restart the app |
-| `confirm()` | Confirm bundle is working |
-| `rollback()` | Roll back to previous bundle |
-| `markAsBad(reason?)` | Blacklist + rollback with custom reason |
-| `getBlacklist()` | List of blacklisted versions |
-| `getHistory()` | Full rollback history |
-| `onRollback(callback)` | Subscribe to rollback events |
-| `scheduleBackgroundCheck(interval)` | Schedule periodic native background check |
+| Method                                         | Description                                            |
+| ---------------------------------------------- | ------------------------------------------------------ |
+| `checkForUpdates()`                            | Native version check                                   |
+| `checkForUpdatesJS(appVersion?)`               | JS-side version check                                  |
+| `hasCompatibleUpdate(appVersion?)`             | Simple compatible-update check                         |
+| `downloadUpdate(onProgress?, bundleFilePath?)` | Download with optional progress and custom bundle path |
+| `getVersion()`                                 | Current OTA version                                    |
+| `getUnzippedPath()`                            | Path to active bundle                                  |
+| `reloadApp()`                                  | Restart the app                                        |
+| `confirm()`                                    | Confirm bundle is working                              |
+| `rollback()`                                   | Roll back to previous bundle                           |
+| `markAsBad(reason?)`                           | Blacklist + rollback with custom reason                |
+| `getBlacklist()`                               | List of blacklisted versions                           |
+| `getHistory()`                                 | Full rollback history                                  |
+| `onRollback(callback)`                         | Subscribe to rollback events                           |
+| `scheduleBackgroundCheck(interval)`            | Schedule periodic native background check              |
 
 ### `RollbackHistoryRecord`
 
 ```typescript
 interface RollbackHistoryRecord {
-  timestamp: number;       // Unix ms
-  fromVersion: string;     // OTA version that was active
-  toVersion: string;       // Version restored ("original" = no OTA)
-  reason:
-    | 'crash_detected'
-    | 'manual'
-    | 'max_rollbacks_exceeded'
-    | string;              // custom reason from markCurrentBundleAsBad()
+  timestamp: number; // Unix ms
+  fromVersion: string; // OTA version that was active
+  toVersion: string; // Version restored ("original" = no OTA)
+  reason: 'crash_detected' | 'manual' | 'max_rollbacks_exceeded' | string; // custom reason from markCurrentBundleAsBad()
 }
 ```
 

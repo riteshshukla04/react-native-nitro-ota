@@ -65,7 +65,7 @@ class NitroOta : HybridNitroOtaSpec() {
     ProcessPhoenix.triggerRebirth(NitroModules.applicationContext!!)
   }
 
-  override fun downloadZipFromUrl(url: String, onProgress: Variant_NullType__received__Double__total__Double_____Unit?): Promise<String> {
+  override fun downloadZipFromUrl(url: String, onProgress: Variant_NullType__received__Double__total__Double_____Unit?, bundleFilePath: Variant_NullType_String?): Promise<String> {
     return Promise.async {
       Log.d("NitroOta", "Starting download from URL: $url")
       val progressCallback: ((Long, Long) -> Unit)? =
@@ -74,7 +74,8 @@ class NitroOta : HybridNitroOtaSpec() {
             { received: Long, total: Long -> p.value(received.toDouble(), total.toDouble()) }
           else -> null
         }
-      val unzippedPath = otaManager.downloadAndUnzipFromUrl(url, null, progressCallback)
+      val bundlePath = bundleFilePath?.asSecondOrNull()
+      val unzippedPath = otaManager.downloadAndUnzipFromUrl(url, null, progressCallback, bundlePath)
       Log.d("NitroOta", "Unzipped path: $unzippedPath")
       return@async unzippedPath
     }

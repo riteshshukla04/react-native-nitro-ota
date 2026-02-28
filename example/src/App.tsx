@@ -65,7 +65,9 @@ export default function App() {
       if (updateResult?.hasUpdate && updateResult.isCompatible) {
         Alert.alert(
           'Update Available',
-          `New version: ${updateResult.remoteVersion}\n${updateResult.metadata?.releaseNotes || ''}`,
+          `New version: ${updateResult.remoteVersion}\n${
+            updateResult.metadata?.releaseNotes || ''
+          }`,
           [
             { text: 'Later', style: 'cancel' },
             { text: 'Download', onPress: handleDownload },

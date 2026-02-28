@@ -7,7 +7,8 @@ export interface NitroOta extends HybridObject<{
   checkForUpdates(versionCheckUrl: string): Promise<boolean>;
   downloadZipFromUrl(
     downloadUrl: string,
-    onProgress: ((received: number, total: number) => void) | null
+    onProgress: ((received: number, total: number) => void) | null,
+    bundleFilePath: string | null
   ): Promise<string>;
   getStoredOtaVersion(): string | null;
   getStoredUnzippedPath(): string | null;
