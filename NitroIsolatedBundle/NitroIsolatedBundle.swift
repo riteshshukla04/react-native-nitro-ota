@@ -132,10 +132,33 @@ internal class NitroOtaPreferences: NSObject {
         super.init()
     }
 
+    // MARK: - Path conversion helpers
+
+    private static var documentsPath: String {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].path
+    }
+
+    private func toAbsolutePath(_ storedPath: String) -> String {
+        if storedPath.isEmpty { return storedPath }
+        let docsDir = NitroOtaPreferences.documentsPath
+        if !storedPath.hasPrefix("/") {
+            return docsDir + "/" + storedPath
+        }
+        if FileManager.default.fileExists(atPath: storedPath) {
+            return storedPath
+        }
+        if let range = storedPath.range(of: "/Documents/") {
+            let relative = String(storedPath[range.upperBound...])
+            return docsDir + "/" + relative
+        }
+        return storedPath
+    }
+
     // MARK: - Getters
 
     func getOtaUnzippedPath() -> String? {
-        return userDefaults.string(forKey: otaUnzippedPathKey)
+        guard let stored = userDefaults.string(forKey: otaUnzippedPathKey), !stored.isEmpty else { return nil }
+        return toAbsolutePath(stored)
     }
 
     func getOtaVersion() -> String? {

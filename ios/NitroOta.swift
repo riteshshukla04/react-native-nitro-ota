@@ -319,9 +319,44 @@ class PreferencesUtils {
         userDefaults = UserDefaults(suiteName: suiteName) ?? UserDefaults.standard
     }
 
+    // MARK: - Path conversion helpers
+
+    private static var documentsPath: String {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].path
+    }
+
+    private func toRelativePath(_ absolutePath: String) -> String {
+        if absolutePath.isEmpty { return absolutePath }
+        let docsDir = PreferencesUtils.documentsPath
+        if absolutePath.hasPrefix(docsDir) {
+            let relative = String(absolutePath.dropFirst(docsDir.count))
+            return relative.hasPrefix("/") ? String(relative.dropFirst()) : relative
+        }
+        if let range = absolutePath.range(of: "/Documents/") {
+            return String(absolutePath[range.upperBound...])
+        }
+        return absolutePath
+    }
+
+    private func toAbsolutePath(_ storedPath: String) -> String {
+        if storedPath.isEmpty { return storedPath }
+        let docsDir = PreferencesUtils.documentsPath
+        if !storedPath.hasPrefix("/") {
+            return docsDir + "/" + storedPath
+        }
+        if FileManager.default.fileExists(atPath: storedPath) {
+            return storedPath
+        }
+        if let range = storedPath.range(of: "/Documents/") {
+            let relative = String(storedPath[range.upperBound...])
+            return docsDir + "/" + relative
+        }
+        return storedPath
+    }
+
     // MARK: - Setters
     func setOtaUnzippedPath(_ path: String) {
-        userDefaults.set(path, forKey: otaUnzippedPathKey)
+        userDefaults.set(toRelativePath(path), forKey: otaUnzippedPathKey)
         userDefaults.synchronize()
     }
 
@@ -347,7 +382,8 @@ class PreferencesUtils {
 
     // MARK: - Getters
     func getOtaUnzippedPath() -> String? {
-        return userDefaults.string(forKey: otaUnzippedPathKey)
+        guard let stored = userDefaults.string(forKey: otaUnzippedPathKey), !stored.isEmpty else { return nil }
+        return toAbsolutePath(stored)
     }
 
     func getOtaVersion() -> String? {
@@ -369,11 +405,12 @@ class PreferencesUtils {
     // MARK: - Rollback getters/setters
 
     func getPreviousUnzippedPath() -> String? {
-        return userDefaults.string(forKey: otaPreviousUnzippedPathKey)
+        guard let stored = userDefaults.string(forKey: otaPreviousUnzippedPathKey), !stored.isEmpty else { return nil }
+        return toAbsolutePath(stored)
     }
 
     func setPreviousUnzippedPath(_ path: String) {
-        userDefaults.set(path, forKey: otaPreviousUnzippedPathKey)
+        userDefaults.set(toRelativePath(path), forKey: otaPreviousUnzippedPathKey)
         userDefaults.synchronize()
     }
 
@@ -679,7 +716,7 @@ class OtaManager {
 
     // MARK: - Public methods
 
-    func downloadAndUnzipFromUrl(_ downloadUrl: String, versionCheckUrl: String?, onProgress: ((Int64, Int64) -> Void)? = nil) throws -> String {
+    func downloadAndUnzipFromUrl(_ downloadUrl: String, versionCheckUrl: String?, onProgress: ((Int64, Int64) -> Void)? = nil, bundleFilePath: String? = nil) throws -> String {
         // Store the URLs for future update checks
         preferences.setUpdateDownloadUrl(downloadUrl)
         if let versionCheckUrl = versionCheckUrl {
@@ -734,7 +771,26 @@ class OtaManager {
             let contents = try? FileManager.default.contentsOfDirectory(atPath: unzipDir.path)
             print("OtaManager: Unzip completed, directory contents: \(contents?.joined(separator: ", ") ?? "No items")")
 
-            // Find the actual content folder and detect bundle name
+            if let bundleFilePath = bundleFilePath, !bundleFilePath.isEmpty {
+                print("OtaManager: Using user-supplied bundleFilePath: \(bundleFilePath)")
+                let bundleFileURL = unzipDir.appendingPathComponent(bundleFilePath)
+                let contentFolder = bundleFileURL.deletingLastPathComponent()
+                let bundleName = bundleFileURL.lastPathComponent
+
+                readVersionFromLocalFile(contentFolder)
+
+                preferences.setOtaUnzippedPath(bundleFileURL.path)
+                print("OtaManager: Stored bundle path in UserDefaults: \(bundleFileURL.path)")
+
+                preferences.setOtaBundleName(bundleName)
+                print("OtaManager: Stored bundle name in UserDefaults: \(bundleName)")
+
+                cleanupOldOtaDirectories()
+
+                return contentFolder.path
+            }
+
+            // Auto-detect the content folder and bundle name
             let result = findContentFolder(unzipDir: unzipDir)
             if let (contentFolder, bundleName) = result {
                 print("OtaManager: Using content folder: \(contentFolder.path), bundle: \(bundleName)")
@@ -978,7 +1034,7 @@ class NitroOta: HybridNitroOtaSpec {
         }
     }
 
-    func downloadZipFromUrl(downloadUrl: String, onProgress: Variant_NullType____received__Double____total__Double_____Void?) throws -> Promise<String> {
+    func downloadZipFromUrl(downloadUrl: String, onProgress: Variant_NullType____received__Double____total__Double_____Void?, bundleFilePath: Variant_NullType_String?) throws -> Promise<String> {
         return Promise.async {
             do {
                 print("NitroOta: Starting download from URL: \(downloadUrl)")
@@ -988,7 +1044,13 @@ class NitroOta: HybridNitroOtaSpec {
                 } else {
                     progressCallback = nil
                 }
-                let unzippedPath = try self.otaManager.downloadAndUnzipFromUrl(downloadUrl, versionCheckUrl: nil, onProgress: progressCallback)
+                let bundlePath: String?
+                if case .second(let path) = bundleFilePath {
+                    bundlePath = path
+                } else {
+                    bundlePath = nil
+                }
+                let unzippedPath = try self.otaManager.downloadAndUnzipFromUrl(downloadUrl, versionCheckUrl: nil, onProgress: progressCallback, bundleFilePath: bundlePath)
                 print("NitroOta: Unzipped path: \(unzippedPath)")
                 return unzippedPath
             } catch {

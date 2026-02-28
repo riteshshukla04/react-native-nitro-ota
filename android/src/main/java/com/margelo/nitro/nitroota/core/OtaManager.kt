@@ -143,7 +143,7 @@ class OtaManager(
      * @return The absolute path to the unzipped directory
      * @throws Exception If download or unzip fails
      */
-    fun downloadAndUnzipFromUrl(downloadUrl: String, versionCheckUrl: String? = null, onProgress: ((Long, Long) -> Unit)? = null): String {
+    fun downloadAndUnzipFromUrl(downloadUrl: String, versionCheckUrl: String? = null, onProgress: ((Long, Long) -> Unit)? = null, bundleFilePath: String? = null): String {
         // Rotate current bundle to previous slot before downloading a new one
         val existingPath = preferences.getOtaUnzippedPath()
         val existingVersion = preferences.getOtaVersion()
@@ -185,7 +185,26 @@ class OtaManager(
             ZipUtils.unzip(zipFile, unzipDir)
             Log.d("OtaManager", "Unzip completed, directory contents: ${unzipDir.list()?.joinToString(", ") ?: "No items"}")
 
-            // Find the actual content folder and detect bundle name
+            if (!bundleFilePath.isNullOrEmpty()) {
+                Log.d("OtaManager", "Using user-supplied bundleFilePath: $bundleFilePath")
+                val bundleFile = File(unzipDir, bundleFilePath)
+                val contentFolder = bundleFile.parentFile ?: unzipDir
+                val bundleName = bundleFile.name
+
+                readVersionFromLocalFile(contentFolder)
+
+                preferences.setOtaUnzippedPath(bundleFile.absolutePath)
+                Log.d("OtaManager", "Stored bundle path in SharedPreferences: ${bundleFile.absolutePath}")
+
+                preferences.setOtaBundleName(bundleName)
+                Log.d("OtaManager", "Stored bundle name in SharedPreferences: $bundleName")
+
+                cleanupOldOtaDirectories()
+
+                return contentFolder.absolutePath
+            }
+
+            // Auto-detect the content folder and bundle name
             val result = findContentFolder(unzipDir)
             if (result != null) {
                 val (contentFolder, bundleName) = result

@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { withAppDelegate,withPodfile } from '@expo/config-plugins';
+import { withAppDelegate, withPodfile } from '@expo/config-plugins';
 
 const withIosAction: any = (config: any) => {
   // First, modify AppDelegate
