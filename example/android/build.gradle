@@ -19,3 +19,9 @@ buildscript {
 }
 
 apply plugin: "com.facebook.react.rootproject"
+
+subprojects {
+  tasks.withType(Test).configureEach {
+    failOnNoDiscoveredTests = false
+  }
+}

@@ -14,7 +14,7 @@
     "react": "19.2.3",
     "react-native": "0.84.1",
     "react-native-device-info": "^15.0.1",
-    "react-native-nitro-modules": "^0.33.9"
+    "react-native-nitro-modules": "^0.35.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
