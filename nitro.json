@@ -9,8 +9,14 @@
   },
   "autolinking": {
     "NitroOta": {
-      "swift": "NitroOta",
-      "kotlin": "NitroOta"
+      "android": {
+        "language": "kotlin",
+        "implementationClassName": "NitroOta"
+      },
+      "ios": {
+        "language": "swift",
+        "implementationClassName": "NitroOta"
+      }
     }
   },
   "ignorePaths": ["node_modules"]
