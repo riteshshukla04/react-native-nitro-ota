@@ -10574,18 +10574,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nitrogen@npm:^0.32.0":
-  version: 0.32.2
-  resolution: "nitrogen@npm:0.32.2"
+"nitrogen@npm:^0.35.1":
+  version: 0.35.1
+  resolution: "nitrogen@npm:0.35.1"
   dependencies:
     chalk: ^5.3.0
-    react-native-nitro-modules: ^0.32.2
+    react-native-nitro-modules: ^0.35.1
     ts-morph: ^27.0.0
     yargs: ^18.0.0
     zod: ^4.0.5
   bin:
     nitrogen: lib/index.js
-  checksum: 1b0799d746f86e09710dc248b8398d6ff6a4b804ce4a280f0691307b9e7a498d25bb90262a66b9c8bb74fcc921dd5cfcc585ba7d47eb65aa4ee1fb966803e3b2
+  checksum: 85fde9bc5e7bc6736feabd23bd82e5487521b6f762c83a166d22cf041dc8491729562bb0d9601ccd9c480a934d63e812a9ae0d120071e501911157c7ba9c075a
   languageName: node
   linkType: hard
 
@@ -11643,23 +11643,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-nitro-modules@npm:^0.32.0, react-native-nitro-modules@npm:^0.32.2":
-  version: 0.32.2
-  resolution: "react-native-nitro-modules@npm:0.32.2"
+"react-native-nitro-modules@npm:^0.35.1":
+  version: 0.35.1
+  resolution: "react-native-nitro-modules@npm:0.35.1"
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: 19cf02168699bbeaa3bc45bf0af1eaa6877a5fde3b22adc759516d3a3103c77754d3e13a8fe6e16782d34d019fe61f4240a6abc5a483a23a93c998853416cc70
-  languageName: node
-  linkType: hard
-
-"react-native-nitro-modules@npm:^0.33.9":
-  version: 0.33.9
-  resolution: "react-native-nitro-modules@npm:0.33.9"
-  peerDependencies:
-    react: "*"
-    react-native: "*"
-  checksum: b9f1ebe7621f600046e0c4701e33f3a038a256fdca84394011cdf431bbf7d142a28f2fa042df4f78b8c879740697ff53e0afca933316063eee0f24f27e920131
+  checksum: 82f1f6772df18c27fa4fe2f59e9bd78440b79015ce471718e3bea1549cb9c248fd8fc26c3ad144bdce506c1b676fabd8f289efe5f14192f76bae2cbc68b35feb
   languageName: node
   linkType: hard
 
@@ -11682,7 +11672,7 @@ __metadata:
     react-native-builder-bob: ^0.40.13
     react-native-device-info: ^15.0.1
     react-native-monorepo-config: ^0.1.9
-    react-native-nitro-modules: ^0.33.9
+    react-native-nitro-modules: ^0.35.1
   languageName: unknown
   linkType: soft
 
@@ -11720,12 +11710,12 @@ __metadata:
     eslint-plugin-prettier: ^5.5.4
     expo-module-scripts: ^5.0.8
     jest: ^29.7.0
-    nitrogen: ^0.32.0
+    nitrogen: ^0.35.1
     prettier: ^3.6.2
     react: 19.2.3
     react-native: 0.84.1
     react-native-builder-bob: ^0.40.13
-    react-native-nitro-modules: ^0.32.0
+    react-native-nitro-modules: ^0.35.1
     react-native-nitro-ota: ^0.10.1
     release-it: ^19.0.4
     turbo: ^2.5.6
@@ -11733,7 +11723,7 @@ __metadata:
   peerDependencies:
     react: "*"
     react-native: "*"
-    react-native-nitro-modules: 0.32.0
+    react-native-nitro-modules: 0.35.1
   languageName: unknown
   linkType: soft
 

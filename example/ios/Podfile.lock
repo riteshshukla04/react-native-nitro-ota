@@ -3,7 +3,7 @@ PODS:
   - hermes-engine (250829098.0.9):
     - hermes-engine/Pre-built (= 250829098.0.9)
   - hermes-engine/Pre-built (250829098.0.9)
-  - NitroModules (0.33.9):
+  - NitroModules (0.35.1):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2081,8 +2081,8 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   FBLazyVector: e97c19a5a442429d1988f182a1940fb08df514da
-  hermes-engine: b8cddaf18f3ec32fba67e144302e6a9a8b63523c
-  NitroModules: 7692227646785c504b614986f9be3a93ced3aebc
+  hermes-engine: 3e51777a1c12be5846c8202e4cce8b0fb1ee85fe
+  NitroModules: 3ccfac829344db72859f6ec0d07f58cfe39f4cd1
   NitroOta: 59b8d57a4aa5343f65f00c1d0ddc2f331ebb56f4
   NitroOtaBundleManager: 4b9c1669d0dc7d594f3f82becdd20b213bfbe567
   RCTDeprecation: af44b104091a34482596cd9bd7e8d90c4e9b4bd7
@@ -2093,7 +2093,7 @@ SPEC CHECKSUMS:
   React: 1ba7d364ade7d883a1ec055bfc3606f35fdee17b
   React-callinvoker: bc2a26f8d84fb01f003fc6de6c9337b64715f95b
   React-Core: 7840d3a80b43a95c5e80ef75146bd70925ebab0f
-  React-Core-prebuilt: d8e7e78e9fbfe4ccc4919c4d4079981221a97c54
+  React-Core-prebuilt: 3c7fda113004e2ded846a59275d65441c0d9868e
   React-CoreModules: 2eb010400b63b89e53a324ffb3c112e4c7c3ce42
   React-cxxreact: a558e92199d26f145afa9e62c4233cf8e7950efe
   React-debug: d196e6df0599d78360b3211367e28c5583054133
@@ -2154,11 +2154,11 @@ SPEC CHECKSUMS:
   ReactAppDependencyProvider: e96e93b493d8d86eeaee3e590ba0be53f6abe46f
   ReactCodegen: 66522f37c7e4861aec1f6a574dee83917fad4397
   ReactCommon: 07572bf9e687c8a52fbe4a3641e9e3a1a477c78e
-  ReactNativeDependencies: 0d46b02b3bdbd7b686bae16da425aa13062d04ad
+  ReactNativeDependencies: 399c0f4607265e533537e9047a3ea99c1389b81e
   RNDeviceInfo: 36d7f232bfe7c9b5c494cb7793230424ed32c388
   SSZipArchive: fe6a26b2a54d5a0890f2567b5cc6de5caa600aef
   Yoga: 846fbe6f595136be802ad81d05688ff748839764
 
 PODFILE CHECKSUM: 06eb7e239abcf2735c547ff66e2d6578fbe88a2b
 
-COCOAPODS: 1.15.2
+COCOAPODS: 1.16.2
