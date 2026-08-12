@@ -49,7 +49,7 @@ class PreferencesUtils(private val sharedPreferences: SharedPreferences, private
      * Stores the unzipped OTA path.
      */
     fun setOtaUnzippedPath(path: String) {
-        sharedPreferences.edit().putString(OTA_UNZIPPED_PATH, path).apply()
+        sharedPreferences.edit().putString(OTA_UNZIPPED_PATH, path).commit()
     }
 
     /**
@@ -63,7 +63,7 @@ class PreferencesUtils(private val sharedPreferences: SharedPreferences, private
      * Stores the OTA version.
      */
     fun setOtaVersion(version: String) {
-        sharedPreferences.edit().putString(OTA_VERSION, version).apply()
+        sharedPreferences.edit().putString(OTA_VERSION, version).commit()
     }
 
     /**
