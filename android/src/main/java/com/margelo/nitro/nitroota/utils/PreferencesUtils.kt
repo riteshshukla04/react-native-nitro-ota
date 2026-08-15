@@ -49,7 +49,7 @@ class PreferencesUtils(private val sharedPreferences: SharedPreferences, private
      * Stores the unzipped OTA path.
      */
     fun setOtaUnzippedPath(path: String) {
-        sharedPreferences.edit().putString(OTA_UNZIPPED_PATH, path).apply()
+        sharedPreferences.edit().putString(OTA_UNZIPPED_PATH, path).commit()
     }
 
     /**
@@ -63,7 +63,7 @@ class PreferencesUtils(private val sharedPreferences: SharedPreferences, private
      * Stores the OTA version.
      */
     fun setOtaVersion(version: String) {
-        sharedPreferences.edit().putString(OTA_VERSION, version).apply()
+        sharedPreferences.edit().putString(OTA_VERSION, version).commit()
     }
 
     /**
@@ -105,7 +105,7 @@ class PreferencesUtils(private val sharedPreferences: SharedPreferences, private
      * Stores the Android bundle name.
      */
     fun setOtaBundleName(bundleName: String) {
-        sharedPreferences.edit().putString(OTA_BUNDLE_NAME, bundleName).apply()
+        sharedPreferences.edit().putString(OTA_BUNDLE_NAME, bundleName).commit()
     }
 
     /**
@@ -118,7 +118,7 @@ class PreferencesUtils(private val sharedPreferences: SharedPreferences, private
     // MARK: - Rollback getters/setters
 
     fun setPreviousUnzippedPath(path: String) {
-        sharedPreferences.edit().putString(OTA_PREVIOUS_UNZIPPED_PATH, path).apply()
+        sharedPreferences.edit().putString(OTA_PREVIOUS_UNZIPPED_PATH, path).commit()
     }
 
     fun getPreviousUnzippedPath(): String? {
@@ -126,7 +126,7 @@ class PreferencesUtils(private val sharedPreferences: SharedPreferences, private
     }
 
     fun setPreviousVersion(version: String) {
-        sharedPreferences.edit().putString(OTA_PREVIOUS_VERSION, version).apply()
+        sharedPreferences.edit().putString(OTA_PREVIOUS_VERSION, version).commit()
     }
 
     fun getPreviousVersion(): String? {
