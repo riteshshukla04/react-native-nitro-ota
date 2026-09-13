@@ -105,17 +105,11 @@ export interface OTAVersionCheckResult {
 }
 
 /**
- * Checks for OTA updates by comparing versions
- * @param versionCheckUrl - URL to check for version information
- * @param currentOtaVersion - Currently installed OTA version (if any)
- * @param currentAppVersion - Current app version
- * @returns Version check result with update availability and compatibility info
+ * Fetches and parses a version manifest (plain text `ota.version` or JSON `ota.version.json`).
  */
-export async function checkOTAVersion(
-  versionCheckUrl: string,
-  currentOtaVersion: string | null,
-  currentAppVersion: string
-): Promise<OTAVersionCheckResult> {
+export async function fetchVersionConfig(
+  versionCheckUrl: string
+): Promise<{ remoteVersion: string; config: OTAVersionConfig | null }> {
   const response = await fetch(versionCheckUrl);
   const contentType = response.headers.get('content-type');
 
@@ -149,6 +143,51 @@ export async function checkOTAVersion(
       // Its a text file, so we need to parse it
     }
   }
+
+  return { remoteVersion, config: versionConfig };
+}
+
+/**
+ * Resolves a `patches` entry against the manifest URL.
+ * Absolute URLs pass through; anything else is relative to the manifest's directory.
+ */
+export function resolvePatchUrl(manifestUrl: string, patchRef: string): string {
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(patchRef)) {
+    return patchRef;
+  }
+  const base = manifestUrl.split(/[?#]/)[0] ?? manifestUrl;
+  return base.slice(0, base.lastIndexOf('/') + 1) + patchRef;
+}
+
+/**
+ * Looks up the patch zip that upgrades `fromVersion` to the manifest's version.
+ * @returns The resolved patch URL, or null when the manifest has no patch for that version
+ */
+export async function findPatchUrl(
+  manifestUrl: string,
+  fromVersion: string
+): Promise<string | null> {
+  const { config } = await fetchVersionConfig(manifestUrl);
+  const patchRef = config?.patches?.[fromVersion];
+  return typeof patchRef === 'string' && patchRef
+    ? resolvePatchUrl(manifestUrl, patchRef)
+    : null;
+}
+
+/**
+ * Checks for OTA updates by comparing versions
+ * @param versionCheckUrl - URL to check for version information
+ * @param currentOtaVersion - Currently installed OTA version (if any)
+ * @param currentAppVersion - Current app version
+ * @returns Version check result with update availability and compatibility info
+ */
+export async function checkOTAVersion(
+  versionCheckUrl: string,
+  currentOtaVersion: string | null,
+  currentAppVersion: string
+): Promise<OTAVersionCheckResult> {
+  const { remoteVersion, config: versionConfig } =
+    await fetchVersionConfig(versionCheckUrl);
 
   // If no current version, update is available
   if (!currentOtaVersion) {

@@ -3,9 +3,11 @@ import { useEffect, useState } from 'react';
 import { Text, View, StyleSheet, Button, Alert } from 'react-native';
 import {
   OTAUpdateManager,
+  findPatchUrl,
   getRollbackHistory,
   githubOTA,
   reloadApp,
+  type OTADownloadInfo,
   type RollbackHistoryRecord,
 } from 'react-native-nitro-ota';
 
@@ -15,6 +17,10 @@ const ref = 'iOS';
 
 export default function App() {
   const [result, setResult] = useState<string | null>(null);
+  const [lastDownload, setLastDownload] = useState<OTADownloadInfo | null>(
+    null
+  );
+  const [updateStatus, setUpdateStatus] = useState<string>('Not checked');
   const [otaVersion, setOtaVersion] = useState<string | null>(null);
   const [unzippedPath, setUnzippedPath] = useState<string | null>(null);
   const [history, setHistory] = useState<{
@@ -22,9 +28,10 @@ export default function App() {
     badVersions: string[];
   } | null>(null);
   // Initialize OTA manager with download URL and version check URL
+  const otaUrls = githubOTA({ githubUrl, otaVersionPath, ref });
   const otaManager = new OTAUpdateManager(
-    githubOTA({ githubUrl, otaVersionPath, ref }).downloadUrl,
-    githubOTA({ githubUrl, otaVersionPath, ref }).versionUrl
+    otaUrls.downloadUrl,
+    otaUrls.versionUrl
   );
 
   useEffect(() => {
@@ -35,8 +42,10 @@ export default function App() {
 
   const handleDownload = async () => {
     try {
+      let bytes = 0;
       const path = await otaManager.downloadUpdate((received, total) => {
         if (received === total) {
+          bytes = received;
           console.log(`Download complete: ${received} bytes`);
         } else if (total > 0) {
           const percent = Math.round((received / total) * 100);
@@ -45,7 +54,9 @@ export default function App() {
           console.log(`Downloading: ${received} bytes…`);
         }
       });
-      setResult(`Downloaded to: ${path}`);
+      setResult(`Downloaded ${bytes} bytes to: ${path}`);
+      setLastDownload(otaManager.lastDownload);
+      setUpdateStatus('Up to date');
 
       // Refresh stored data after download
       setOtaVersion(otaManager.getVersion());
@@ -60,13 +71,28 @@ export default function App() {
   const handleCheckUpdates = async () => {
     try {
       const updateResult = await otaManager.checkForUpdatesJS();
-      console.log('Update check result:', updateResult);
+      const nativeHasUpdate = await otaManager.checkForUpdates();
+      const installed = otaManager.getVersion();
+      const patchUrl = installed
+        ? await findPatchUrl(otaUrls.versionUrl, installed)
+        : null;
+      console.log('Update check result:', updateResult, {
+        nativeHasUpdate,
+        patchUrl,
+      });
 
       if (updateResult?.hasUpdate && updateResult.isCompatible) {
+        setUpdateStatus(
+          `${updateResult.remoteVersion} available via ${
+            patchUrl ? 'patch' : 'full download'
+          }`
+        );
         Alert.alert(
           'Update Available',
           `New version: ${updateResult.remoteVersion}\n${
             updateResult.metadata?.releaseNotes || ''
+          }\nNative check: ${nativeHasUpdate}\n${
+            patchUrl ? `Patch: ${patchUrl}` : 'Full download'
           }`,
           [
             { text: 'Later', style: 'cancel' },
@@ -79,7 +105,11 @@ export default function App() {
           'An update is available but not compatible with your app version'
         );
       } else {
-        Alert.alert('No Updates', 'You are on the latest version');
+        setUpdateStatus('Up to date');
+        Alert.alert(
+          'No Updates',
+          `You are on the latest version\nNative check: ${nativeHasUpdate}`
+        );
       }
     } catch (error) {
       console.error('Update check failed:', error);
@@ -124,6 +154,18 @@ export default function App() {
 
       <Text style={styles.label}>OTA Version:</Text>
       <Text style={styles.value}>{otaVersion || 'None'}</Text>
+
+      <Text style={styles.label}>Update Status:</Text>
+      <Text style={styles.value}>{updateStatus}</Text>
+
+      <Text style={styles.label}>Last Download:</Text>
+      <Text style={styles.value}>
+        {lastDownload
+          ? `${lastDownload.patch ? 'Patch' : 'Full'} • ${(
+              lastDownload.bytes / 1024
+            ).toFixed(1)} KB • ${lastDownload.url}`
+          : 'None'}
+      </Text>
 
       <Text style={styles.label}>Last Downloading Result:</Text>
       <Text style={styles.value}>{result || 'None'}</Text>

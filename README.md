@@ -17,6 +17,7 @@ Download, unzip, and apply JavaScript bundle updates at runtime without going th
 - ↩️ **Rollback** - Manual rollback to the previous bundle with one call
 - 🚫 **Blacklisting** - Bad versions are never re-downloaded
 - 📊 **Download Progress** - Track download progress with a callback
+- 🩹 **Differential Updates** - Devices download small bsdiff patches instead of the full bundle
 
 ## 📦 Installation
 
@@ -406,9 +407,14 @@ For more control, use the JSON format with semantic versioning and target app ve
     "android": ["2.30.1", "2.30.2"],
     "ios": ["2.30.1"]
   },
-  "releaseNotes": "Bug fixes and improvements"
+  "releaseNotes": "Bug fixes and improvements",
+  "patches": {
+    "1.2.2": "patches/1.2.2-1.2.3.zip"
+  }
 }
 ```
+
+`patches` is optional and written for you by `npx nitro-ota patch` — see [Differential (Patch) Updates](#-differential-patch-updates).
 
 **JavaScript API for Advanced Checking:**
 
@@ -479,6 +485,70 @@ In the **Jellify App**:
 - Bundles are uploaded to a dedicated Git branch named by version and platform (e.g., [`nitro_0.19.2_android`](https://github.com/Jellify-Music/App-Bundles/tree/nitro_0.19.2_android)).
 - The upload and versioning are automated via [GitHub Actions workflow](https://github.com/Jellify-Music/App/blob/main/.github/workflows/publish-ota-update.yml).
 
+## 🩹 Differential (Patch) Updates
+
+Most releases change a few kilobytes of JavaScript, yet every device downloads the whole zip. With patches, a device that already runs version N downloads a small **patch zip** and rebuilds version N+1 locally. Patches are generated once at publish time and served as plain files, so this works on any static host (GitHub, S3, CDN) — no server logic.
+
+### How it works
+
+1. `npx nitro-ota patch` computes a [bsdiff](https://www.daemonology.net/bsdiff/) delta between the previous bundle and the new one and writes a **patch zip**: the same layout as your full zip, with `<bundle>` replaced by `<bundle>.patch`. Assets and `ota.version.json` are included as-is.
+2. It rewrites `ota.version.json` next to the bundle:
+
+   ```json
+   {
+     "version": "1.2.3",
+     "patches": {
+       "1.2.2": "patches/1.2.2-1.2.3.zip"
+     }
+   }
+   ```
+
+   Keys are the exact version strings devices have stored; values are URLs, absolute or relative to the manifest.
+
+3. `OTAUpdateManager.downloadUpdate()` looks up the installed version in `patches`. When a patch exists it downloads that instead of the full zip and rebuilds the bundle on device, verifying the SHA-256 of both the base bundle and the result. Any failure (no installed bundle, hash mismatch, network error) falls back to the full download automatically.
+
+Requirements: pass a `versionCheckUrl` that points at `ota.version.json`, and keep publishing the full zip — first installs and fallbacks use it. Everything is backward compatible: manifests without `patches` and plain `ota.version` files behave exactly as before, and older app versions ignore the field.
+
+### Generating patches
+
+```bash
+npx nitro-ota patch --old ./previous-release --new ./App-Bundles
+```
+
+| Option                    | Description                                                                                              |
+| ------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `--old <dir>`             | Previously published release directory. Repeat it to support several installed versions (one patch each) |
+| `--new <dir>`             | New release directory (bundle, assets, `ota.version.json`)                                               |
+| `--out <dir>`             | Where to write patch zips (default: `<new>/patches`)                                                     |
+| `--bundle <path>`         | Bundle path relative to the release directory (default: auto-detect `*.bundle` / `*.jsbundle`)           |
+| `--from <v>` / `--to <v>` | Versions (default: read from each directory's `ota.version.json` or `ota.version`)                       |
+| `--url-base <url>`        | Host patches elsewhere; manifest entries become `<url-base>/<file>`                                      |
+
+Each run replaces `patches` with exactly the patches it generated, so list every `--old` you want to support in one run. The CLI needs Node 22.2+ and has no dependencies. If you pass a custom `bundleFilePath` to `downloadUpdate`, use the same relative path as `--bundle`.
+
+### GitHub recipe
+
+The previous release is the previous commit of your bundles branch. GitHub's archive zip (your full download) honours `.gitattributes`, so committed patches stay out of it while `raw.githubusercontent.com` still serves them:
+
+```bash
+# inside the checkout of your bundles branch, before writing the new bundle
+git worktree add ../previous HEAD
+npx react-native bundle --platform android --dev false --entry-file index.js \
+  --bundle-output index.android.bundle --assets-dest .
+echo "{ \"version\": \"$NEW_VERSION\" }" > ota.version.json
+rm -rf patches
+npx nitro-ota patch --old ../previous --new .
+echo 'patches/ export-ignore' > .gitattributes
+git add -A && git commit -m "OTA $NEW_VERSION" && git push
+```
+
+### Notes
+
+- **Hermes**: bytecode bundles diff poorly — a one-line change still produces a comparatively large patch (smaller than the full bundle, but far from a few KB). Plain JavaScript bundles patch best.
+- **Progress**: if the patch fails and the full download runs, `onProgress` restarts from 0 with the full size.
+- **Assets**: unchanged assets are still included in every patch zip; only the bundle is diffed.
+- **Background checks**: `scheduleBackgroundCheck()` always downloads the full zip.
+
 ## 📚 API Reference
 
 ### Functions
@@ -498,25 +568,27 @@ In the **Jellify App**:
 | `onRollback(callback)`                                  | Subscribes to rollback events; returns an unsubscribe function                                                                                                                                                                                             |
 | `checkForOTAUpdatesJS(url?, appVersion?)`               | JS-side version check with detailed result                                                                                                                                                                                                                 |
 | `hasOTAUpdate(url?, appVersion?)`                       | Simplified compatible-update check                                                                                                                                                                                                                         |
+| `findPatchUrl(manifestUrl, fromVersion)`                | Resolves the patch zip URL that upgrades `fromVersion` to the manifest's version, or `null`                                                                                                                                                                |
 
 ### `OTAUpdateManager` class
 
-| Method                                         | Description                                            |
-| ---------------------------------------------- | ------------------------------------------------------ |
-| `checkForUpdates()`                            | Native version check                                   |
-| `checkForUpdatesJS(appVersion?)`               | JS-side version check                                  |
-| `hasCompatibleUpdate(appVersion?)`             | Simple compatible-update check                         |
-| `downloadUpdate(onProgress?, bundleFilePath?)` | Download with optional progress and custom bundle path |
-| `getVersion()`                                 | Current OTA version                                    |
-| `getUnzippedPath()`                            | Path to active bundle                                  |
-| `reloadApp()`                                  | Restart the app                                        |
-| `confirm()`                                    | Confirm bundle is working                              |
-| `rollback()`                                   | Roll back to previous bundle                           |
-| `markAsBad(reason?)`                           | Blacklist + rollback with custom reason                |
-| `getBlacklist()`                               | List of blacklisted versions                           |
-| `getHistory()`                                 | Full rollback history                                  |
-| `onRollback(callback)`                         | Subscribe to rollback events                           |
-| `scheduleBackgroundCheck(interval)`            | Schedule periodic native background check              |
+| Method                                         | Description                                                                                                                     |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `checkForUpdates()`                            | Native version check                                                                                                            |
+| `checkForUpdatesJS(appVersion?)`               | JS-side version check                                                                                                           |
+| `hasCompatibleUpdate(appVersion?)`             | Simple compatible-update check                                                                                                  |
+| `downloadUpdate(onProgress?, bundleFilePath?)` | Download with optional progress and custom bundle path; downloads a patch when the manifest lists one for the installed version |
+| `getVersion()`                                 | Current OTA version                                                                                                             |
+| `getUnzippedPath()`                            | Path to active bundle                                                                                                           |
+| `reloadApp()`                                  | Restart the app                                                                                                                 |
+| `confirm()`                                    | Confirm bundle is working                                                                                                       |
+| `rollback()`                                   | Roll back to previous bundle                                                                                                    |
+| `markAsBad(reason?)`                           | Blacklist + rollback with custom reason                                                                                         |
+| `getBlacklist()`                               | List of blacklisted versions                                                                                                    |
+| `getHistory()`                                 | Full rollback history                                                                                                           |
+| `onRollback(callback)`                         | Subscribe to rollback events                                                                                                    |
+| `scheduleBackgroundCheck(interval)`            | Schedule periodic native background check                                                                                       |
+| `lastDownload`                                 | `{ url, patch, bytes }` of the most recent `downloadUpdate()`, or `null`                                                        |
 
 ### `RollbackHistoryRecord`
 
