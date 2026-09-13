@@ -1161,6 +1161,10 @@ class NitroOta: HybridNitroOtaSpec {
         print("NitroOta:   - Note: iOS background execution is limited by system")
     }
     
+  func supportsPatches() throws -> Bool {
+    return true
+  }
+
   func reloadApp() throws {
     let reload = {
       NitroOtaBridge.triggerReload(withReason: "NITRO OTA UPDATE")

@@ -3,7 +3,6 @@ import type { NitroOta } from './NitroOta.nitro';
 import {
   checkOTAVersion,
   findPatchUrl,
-  hasCompatibleUpdate,
   type OTAVersionCheckResult,
 } from './otaVersionChecker';
 
@@ -127,6 +126,19 @@ export function getStoredUnzippedPath(): string | null {
 
 export function reloadApp(): void {
   NitroOtaHybridObject.reloadApp();
+}
+
+/**
+ * Whether the installed native library can apply differential patches.
+ * Returns false on older native builds (e.g. JS updated over the air ahead of the binary),
+ * in which case `downloadUpdate()` always downloads the full bundle.
+ */
+export function isPatchSupported(): boolean {
+  try {
+    return NitroOtaHybridObject.supportsPatches() === true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -298,6 +310,15 @@ export async function checkForOTAUpdatesJS(
       currentOtaVersion,
       currentAppVersion
     );
+    if (result.hasUpdate) {
+      const blacklist = await getBlacklistedVersions();
+      if (blacklist.includes(result.remoteVersion)) {
+        console.warn(
+          `OTA: Remote version ${result.remoteVersion} is blacklisted, skipping`
+        );
+        return { ...result, hasUpdate: false };
+      }
+    }
 
     return result;
   } catch (error) {
@@ -320,15 +341,9 @@ export async function hasOTAUpdate(
     return false;
   }
 
-  const currentOtaVersion = getStoredOtaVersion();
-  const currentAppVersion = appVersion || getAppVersion();
-
   try {
-    return await hasCompatibleUpdate(
-      versionCheckUrl,
-      currentOtaVersion,
-      currentAppVersion
-    );
+    const result = await checkForOTAUpdatesJS(versionCheckUrl, appVersion);
+    return result !== null && result.hasUpdate && result.isCompatible;
   } catch (error) {
     console.error('OTA: Error checking for compatible updates:', error);
     return false;
@@ -450,7 +465,7 @@ export class OTAUpdateManager {
 
   private async findPatchUrl(): Promise<string | null> {
     const currentVersion = getStoredOtaVersion();
-    if (!this.versionCheckUrl || !currentVersion) {
+    if (!this.versionCheckUrl || !currentVersion || !isPatchSupported()) {
       return null;
     }
     try {

@@ -569,6 +569,7 @@ git add -A && git commit -m "OTA $NEW_VERSION" && git push
 | `checkForOTAUpdatesJS(url?, appVersion?)`               | JS-side version check with detailed result                                                                                                                                                                                                                 |
 | `hasOTAUpdate(url?, appVersion?)`                       | Simplified compatible-update check                                                                                                                                                                                                                         |
 | `findPatchUrl(manifestUrl, fromVersion)`                | Resolves the patch zip URL that upgrades `fromVersion` to the manifest's version, or `null`                                                                                                                                                                |
+| `isPatchSupported()`                                    | `true` when the installed native library can apply patches; `false` on older binaries, where `downloadUpdate()` always uses the full zip                                                                                                                  |
 
 ### `OTAUpdateManager` class
 
