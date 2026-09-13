@@ -3668,6 +3668,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/node@npm:^22.0.0":
+  version: 22.20.2
+  resolution: "@types/node@npm:22.20.2"
+  dependencies:
+    undici-types: ~6.21.0
+  checksum: 41a5c7df44861f8193e0b9c5e96628316c1f062fb9403d3b999650c29a68c824b5fd273b0d3a949c15bb7bd210dcd0856d72f83f08ce1b72da552d3edae4257a
+  languageName: node
+  linkType: hard
+
 "@types/normalize-package-data@npm:^2.4.1":
   version: 2.4.4
   resolution: "@types/normalize-package-data@npm:2.4.4"
@@ -11676,17 +11685,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"react-native-nitro-ota@npm:^0.10.1":
-  version: 0.10.1
-  resolution: "react-native-nitro-ota@npm:0.10.1"
-  peerDependencies:
-    react: "*"
-    react-native: "*"
-    react-native-nitro-modules: 0.32.0
-  checksum: 73222955ab82d5900eb7806705b6fd38bd9655ec822442c3be347bb08404e08f012a6697a975877967810e8ad2be8b020e35fd2762f57aaa5468c966a97b2d60
-  languageName: node
-  linkType: hard
-
 "react-native-nitro-ota@workspace:.":
   version: 0.0.0-use.local
   resolution: "react-native-nitro-ota@workspace:."
@@ -11701,6 +11699,7 @@ __metadata:
     "@react-native/eslint-config": ^0.84.1
     "@release-it/conventional-changelog": 8.0.2
     "@types/jest": ^29.5.14
+    "@types/node": ^22.0.0
     "@types/react": 19.2.0
     commitlint: ^19.8.1
     del-cli: ^6.0.0
@@ -11716,7 +11715,6 @@ __metadata:
     react-native: 0.84.1
     react-native-builder-bob: ^0.40.13
     react-native-nitro-modules: ^0.35.1
-    react-native-nitro-ota: ^0.10.1
     release-it: ^19.0.4
     turbo: ^2.5.6
     typescript: ^5.9.2
@@ -11724,6 +11722,8 @@ __metadata:
     react: "*"
     react-native: "*"
     react-native-nitro-modules: 0.35.1
+  bin:
+    nitro-ota: ./lib/module/cli.js
   languageName: unknown
   linkType: soft
 
@@ -13535,6 +13535,13 @@ __metadata:
   version: 0.1.2
   resolution: "unc-path-regex@npm:0.1.2"
   checksum: a05fa2006bf4606051c10fc7968f08ce7b28fa646befafa282813aeb1ac1a56f65cb1b577ca7851af2726198d59475bb49b11776036257b843eaacee2860a4ec
+  languageName: node
+  linkType: hard
+
+"undici-types@npm:~6.21.0":
+  version: 6.21.0
+  resolution: "undici-types@npm:6.21.0"
+  checksum: 46331c7d6016bf85b3e8f20c159d62f5ae471aba1eb3dc52fff35a0259d58dcc7d592d4cc4f00c5f9243fa738a11cfa48bd20203040d4a9e6bc25e807fab7ab3
   languageName: node
   linkType: hard
 

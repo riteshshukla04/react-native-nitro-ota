@@ -15,6 +15,13 @@ export interface NitroOta extends HybridObject<{
   reloadApp(): void;
 
   /**
+   * True when this native build can apply differential (`.patch`) bundles.
+   * JS delivered over the air may run on an older native library that lacks the
+   * method entirely; callers must treat a missing method as `false`.
+   */
+  supportsPatches(): boolean;
+
+  /**
    * Schedule a background OTA check that runs natively (no JavaScript callbacks needed).
    *
    * @param versionCheckUrl - URL to check for version updates

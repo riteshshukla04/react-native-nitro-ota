@@ -558,6 +558,9 @@ class OtaManager {
                 if item.pathExtension == "jsbundle" {
                     return item.lastPathComponent
                 }
+                if item.pathExtension == "patch", item.deletingPathExtension().pathExtension == "jsbundle" {
+                    return item.deletingPathExtension().lastPathComponent
+                }
             }
         } catch {
             print("OtaManager: Error searching for bundle file: \(error.localizedDescription)")
@@ -661,6 +664,25 @@ class OtaManager {
         return nil
     }
 
+    /// Rebuilds `<bundle>` from the installed bundle when the zip only carried `<bundle>.patch`.
+    private func applyPatchIfPresent(contentFolder: URL, bundleName: String) throws {
+        let bundleFile = contentFolder.appendingPathComponent(bundleName)
+        let patchFile = contentFolder.appendingPathComponent(bundleName + ".patch")
+        guard !FileManager.default.fileExists(atPath: bundleFile.path),
+              FileManager.default.fileExists(atPath: patchFile.path) else {
+            return
+        }
+        var isDirectory: ObjCBool = false
+        guard let basePath = preferences.getOtaUnzippedPath(), !basePath.isEmpty,
+              FileManager.default.fileExists(atPath: basePath, isDirectory: &isDirectory), !isDirectory.boolValue else {
+            throw NSError(domain: "OtaManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "Patch requires an installed OTA bundle as base"])
+        }
+        print("OtaManager: Applying patch \(patchFile.lastPathComponent) using base \(basePath)")
+        try PatchUtils.apply(base: URL(fileURLWithPath: basePath), patch: patchFile, output: bundleFile)
+        try? FileManager.default.removeItem(at: patchFile)
+        print("OtaManager: Patch applied, rebuilt \(bundleFile.path)")
+    }
+
     private func readVersionFromLocalFile(_ contentFolder: URL) {
         // First, try to read ota.version.json
         let otaVersionJsonFile = contentFolder.appendingPathComponent("ota.version.json")
@@ -711,6 +733,12 @@ class OtaManager {
         print("OtaManager: Downloading version from URL: \(versionUrl)")
         let versionContent = try downloadManager.downloadText(from: versionUrl).trimmingCharacters(in: .whitespacesAndNewlines)
         print("OtaManager: Downloaded version: \(versionContent)")
+        if versionContent.hasPrefix("{"),
+           let data = versionContent.data(using: .utf8),
+           let json = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
+           let version = json["version"] as? String {
+            return version
+        }
         return versionContent
     }
 
@@ -751,6 +779,7 @@ class OtaManager {
         preferences.setRollbackCount(0)
         preferences.setPendingValidation(true)
 
+        var createdUnzipDir: URL?
         do {
             // Download the zip file
             guard let downloadURL = URL(string: downloadUrl) else {
@@ -763,6 +792,7 @@ class OtaManager {
             // Create directory for unzipped files
             let unzipDir = documentsDir.appendingPathComponent("ota_unzipped_\(Int(Date().timeIntervalSince1970 * 1000))")
             try FileManager.default.createDirectory(at: unzipDir, withIntermediateDirectories: true, attributes: nil)
+            createdUnzipDir = unzipDir
             print("OtaManager: Created unzip directory: \(unzipDir.path)")
 
             // Unzip the file
@@ -777,6 +807,7 @@ class OtaManager {
                 let contentFolder = bundleFileURL.deletingLastPathComponent()
                 let bundleName = bundleFileURL.lastPathComponent
 
+                try applyPatchIfPresent(contentFolder: contentFolder, bundleName: bundleName)
                 readVersionFromLocalFile(contentFolder)
 
                 preferences.setOtaUnzippedPath(bundleFileURL.path)
@@ -794,6 +825,8 @@ class OtaManager {
             let result = findContentFolder(unzipDir: unzipDir)
             if let (contentFolder, bundleName) = result {
                 print("OtaManager: Using content folder: \(contentFolder.path), bundle: \(bundleName)")
+
+                try applyPatchIfPresent(contentFolder: contentFolder, bundleName: bundleName)
 
                 // Read version from provided URL or fallback to ota.version file
                 if let versionCheckUrl = versionCheckUrl {
@@ -855,6 +888,9 @@ class OtaManager {
                 return unzipDir.path
             }
         } catch {
+            if let dir = createdUnzipDir, preferences.getOtaUnzippedPath()?.hasPrefix(dir.path) != true {
+                try? FileManager.default.removeItem(at: dir)
+            }
             print("OtaManager: Error in downloadAndUnzipFromUrl for URL: \(downloadUrl), error: \(error.localizedDescription)")
             throw error
         }
@@ -1125,6 +1161,10 @@ class NitroOta: HybridNitroOtaSpec {
         print("NitroOta:   - Note: iOS background execution is limited by system")
     }
     
+  func supportsPatches() throws -> Bool {
+    return true
+  }
+
   func reloadApp() throws {
     let reload = {
       NitroOtaBridge.triggerReload(withReason: "NITRO OTA UPDATE")

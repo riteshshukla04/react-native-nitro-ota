@@ -61,6 +61,8 @@ class NitroOta : HybridNitroOtaSpec() {
     return otaManager.getStoredUnzippedPath()
   }
 
+  override fun supportsPatches(): Boolean = true
+
   override fun reloadApp(): Unit {
     ProcessPhoenix.triggerRebirth(NitroModules.applicationContext!!)
   }

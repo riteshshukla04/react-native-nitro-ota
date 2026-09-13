@@ -13,6 +13,9 @@
     "./package.json": "./package.json",
     "./app.plugin.js": "./app.plugin.js"
   },
+  "bin": {
+    "nitro-ota": "./lib/module/cli.js"
+  },
   "files": [
     "src",
     "lib",
@@ -77,6 +80,7 @@
     "@react-native/eslint-config": "^0.84.1",
     "@release-it/conventional-changelog": "8.0.2",
     "@types/jest": "^29.5.14",
+    "@types/node": "^22.0.0",
     "@types/react": "19.2.0",
     "commitlint": "^19.8.1",
     "del-cli": "^6.0.0",
@@ -172,8 +176,5 @@
     "languages": "kotlin-swift",
     "type": "nitro-module",
     "version": "0.54.6"
-  },
-  "dependencies": {
-    "react-native-nitro-ota": "^0.10.1"
   }
 }

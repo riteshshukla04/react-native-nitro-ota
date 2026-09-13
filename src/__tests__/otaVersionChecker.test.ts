@@ -1,4 +1,9 @@
-import { checkOTAVersion, hasCompatibleUpdate } from '../otaVersionChecker';
+import {
+  checkOTAVersion,
+  findPatchUrl,
+  hasCompatibleUpdate,
+  resolvePatchUrl,
+} from '../otaVersionChecker';
 import { Platform } from 'react-native';
 
 // Mock fetch globally
@@ -321,6 +326,58 @@ describe('otaVersionChecker', () => {
       expect(result.hasUpdate).toBe(true);
       expect(result.isCompatible).toBe(true);
       expect(result.currentVersion).toBe(null);
+    });
+  });
+
+  describe('Patch discovery', () => {
+    it('resolves relative patch refs against the manifest directory', () => {
+      expect(
+        resolvePatchUrl(
+          'https://raw.githubusercontent.com/o/r/main/ota.version.json?token=a/b',
+          'patches/1-2.zip'
+        )
+      ).toBe('https://raw.githubusercontent.com/o/r/main/patches/1-2.zip');
+    });
+
+    it('passes absolute patch refs through', () => {
+      expect(
+        resolvePatchUrl(
+          'https://example.com/ota/ota.version.json',
+          'https://cdn.example.com/p.zip'
+        )
+      ).toBe('https://cdn.example.com/p.zip');
+    });
+
+    it('finds the patch for the installed version', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        headers: { get: () => 'application/json' },
+        json: async () => ({
+          version: '2.0.0',
+          patches: { '1.0.0': 'patches/1.0.0-2.0.0.zip' },
+        }),
+      });
+
+      expect(
+        await findPatchUrl('https://example.com/ota/ota.version.json', '1.0.0')
+      ).toBe('https://example.com/ota/patches/1.0.0-2.0.0.zip');
+    });
+
+    it('returns null when no patch matches or the manifest is plain text', async () => {
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        headers: { get: () => 'application/json' },
+        json: async () => ({ version: '2.0.0', patches: { '1.5.0': 'x.zip' } }),
+      });
+      expect(
+        await findPatchUrl('https://example.com/ota.version.json', '1.0.0')
+      ).toBeNull();
+
+      (global.fetch as jest.Mock).mockResolvedValueOnce({
+        headers: { get: () => 'text/plain' },
+        text: async () => '2.0.0',
+      });
+      expect(
+        await findPatchUrl('https://example.com/ota.version', '1.0.0')
+      ).toBeNull();
     });
   });
 });

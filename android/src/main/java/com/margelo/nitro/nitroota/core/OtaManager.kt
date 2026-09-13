@@ -2,10 +2,12 @@ package com.margelo.nitro.nitroota.core
 
 import android.content.Context
 import com.margelo.nitro.nitroota.network.DownloadManager
+import com.margelo.nitro.nitroota.utils.PatchUtils
 import com.margelo.nitro.nitroota.utils.PreferencesUtils
 import com.margelo.nitro.nitroota.utils.UrlUtils
 import com.margelo.nitro.nitroota.utils.ZipUtils
 import java.io.File
+import java.io.IOException
 import android.util.Log
 import org.json.JSONObject
 
@@ -85,8 +87,29 @@ class OtaManager(
             if (file.isFile && file.name.endsWith(BUNDLE_EXTENSION)) {
                 return file.name
             }
+            if (file.isFile && file.name.endsWith("$BUNDLE_EXTENSION.patch")) {
+                return file.name.removeSuffix(".patch")
+            }
         }
         return null
+    }
+
+    /**
+     * Rebuilds `<bundle>` from the installed bundle when the zip only carried `<bundle>.patch`.
+     */
+    private fun applyPatchIfPresent(contentFolder: File, bundleName: String) {
+        val bundleFile = File(contentFolder, bundleName)
+        val patchFile = File(contentFolder, "$bundleName.patch")
+        if (bundleFile.exists() || !patchFile.isFile) return
+        val basePath = preferences.getOtaUnzippedPath()
+        val baseFile = if (basePath.isNullOrEmpty()) null else File(basePath)
+        if (baseFile == null || !baseFile.isFile) {
+            throw IOException("Patch requires an installed OTA bundle as base")
+        }
+        Log.d("OtaManager", "Applying patch ${patchFile.name} using base ${baseFile.absolutePath}")
+        PatchUtils.apply(baseFile, patchFile, bundleFile)
+        patchFile.delete()
+        Log.d("OtaManager", "Patch applied, rebuilt ${bundleFile.absolutePath}")
     }
 
     /**
@@ -169,6 +192,7 @@ class OtaManager(
         val zipFile = File.createTempFile("ota_update", ".zip", context.filesDir)
         Log.d("OtaManager", "Created temp zip file: ${zipFile.absolutePath}")
 
+        var createdUnzipDir: File? = null
         try {
             // Download the zip file
             Log.d("OtaManager", "Downloading zip file...")
@@ -178,6 +202,7 @@ class OtaManager(
             // Create directory for unzipped files
             val unzipDir = File(context.filesDir, "ota_unzipped_${System.currentTimeMillis()}")
             unzipDir.mkdirs()
+            createdUnzipDir = unzipDir
             Log.d("OtaManager", "Created unzip directory: ${unzipDir.absolutePath}")
 
             // Unzip the file
@@ -191,6 +216,7 @@ class OtaManager(
                 val contentFolder = bundleFile.parentFile ?: unzipDir
                 val bundleName = bundleFile.name
 
+                applyPatchIfPresent(contentFolder, bundleName)
                 readVersionFromLocalFile(contentFolder)
 
                 preferences.setOtaUnzippedPath(bundleFile.absolutePath)
@@ -209,6 +235,8 @@ class OtaManager(
             if (result != null) {
                 val (contentFolder, bundleName) = result
                 Log.d("OtaManager", "Using content folder: ${contentFolder.absolutePath}, bundle: $bundleName")
+
+                applyPatchIfPresent(contentFolder, bundleName)
 
                
                     
@@ -257,6 +285,7 @@ class OtaManager(
                 return unzipDir.absolutePath
             }
         } catch (e: Exception) {
+            createdUnzipDir?.takeIf { preferences.getOtaUnzippedPath()?.startsWith(it.absolutePath) != true }?.deleteRecursively()
             Log.e("OtaManager", "Error in downloadAndUnzipFromUrl for URL: $downloadUrl", e)
             throw e // Re-throw the exception
         } finally {
@@ -393,6 +422,9 @@ class OtaManager(
         // Download the version content as text
         val versionContent = downloadManager.downloadText(versionUrl).trim()
         Log.d("OtaManager", "Downloaded version: $versionContent")
+        if (versionContent.startsWith("{")) {
+            runCatching { JSONObject(versionContent).getString("version") }.getOrNull()?.let { return it }
+        }
 
         return versionContent
     }
