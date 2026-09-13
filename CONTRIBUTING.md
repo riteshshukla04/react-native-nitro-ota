@@ -114,13 +114,16 @@ Our pre-commit hooks verify that the linter and tests pass when committing.
 
 ### Publishing to npm
 
-We use [release-it](https://github.com/release-it/release-it) to make it easier to publish new versions. It handles common tasks like bumping version based on semver, creating tags and releases etc.
+Releases run from the **Release package** GitHub Actions workflow (`.github/workflows/release.yml`, `workflow_dispatch`). Pick a release type: `auto` derives the bump from conventional commits, `patch` / `minor` / `major` force one, `alpha` publishes a pre-release under the `alpha` npm tag. The workflow runs [release-it](https://github.com/release-it/release-it) with `--ci`: it builds (`bun run prepare`, `bun run build:plugin`), bumps the version, generates release notes from the conventional commits, commits `chore: release <version>`, tags `v<version>`, publishes to npm and creates the GitHub release. A second job then pushes `NitroOtaBundleManager.podspec` to CocoaPods trunk, because the `NitroOta` pod pins that pod to the exact same version.
 
-To publish new versions, run the following:
+One-time setup in the repository settings:
 
-```sh
-yarn release
-```
+- GitHub environment `release`.
+- Secret `PERSONAL_ACCESS_TOKEN`: token with `contents: write` (push the release commit and tag, create the release).
+- Secret `COCOAPODS_TRUNK_TOKEN`: from `pod trunk register` / `~/.netrc`.
+- npm: configure a trusted publisher for `react-native-nitro-ota` pointing at this repository and `release.yml` (the job publishes with OIDC, no npm token needed).
+
+The same release can be run locally with `yarn release` (interactive) if needed.
 
 ### Scripts
 

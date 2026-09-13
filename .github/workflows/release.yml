@@ -1,0 +1,117 @@
+name: Release package
+on:
+  workflow_dispatch:
+    inputs:
+      release-type:
+        description: 'Release type (auto = derive from conventional commits, alpha = pre-release)'
+        type: choice
+        options:
+          - auto
+          - patch
+          - minor
+          - major
+          - alpha
+        default: auto
+
+jobs:
+  check-commit:
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository)
+    outputs:
+      skip: ${{ steps.commit-message.outputs.skip }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Get commit message
+        id: commit-message
+        if: github.event_name == 'workflow_run'
+        run: |
+          MESSAGE=$(git log --format=%B -n 1 $(git log -1 --pretty=format:"%h"))
+          if [[ $MESSAGE == "chore: release "* ]]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          fi
+
+  release:
+    runs-on: ubuntu-latest
+    needs: check-commit
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: release
+      url: https://www.npmjs.com/package/react-native-nitro-ota
+    if: ${{ needs.check-commit.outputs.skip != 'true' }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: '20'
+          package-manager-cache: false
+
+      - name: Update npm
+        run: npm install -g npm@11.14.1
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Configure Git
+        run: |
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+
+      - name: Determine release increment
+        id: increment
+        run: |
+          TYPE="${{ github.event.inputs.release-type }}"
+          if [[ "$TYPE" == "alpha" ]]; then
+            # Pre-release: bump derived from conventional commits, tagged "alpha"
+            # on npm and marked as a pre-release on GitHub.
+            echo "arg=--preRelease=alpha --github.preRelease" >> $GITHUB_OUTPUT
+          elif [[ -n "$TYPE" && "$TYPE" != "auto" ]]; then
+            echo "arg=$TYPE" >> $GITHUB_OUTPUT
+          else
+            echo "arg=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create release
+        run: bun run release -- ${{ steps.increment.outputs.arg }} --ci
+        env:
+          GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+
+      - name: Read released version
+        id: version
+        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+  # NitroOta depends on the NitroOtaBundleManager pod at the exact same version, so the
+  # podspec must land on CocoaPods trunk with every release (nitro-player has no equivalent step).
+  publish-pod:
+    runs-on: macos-latest
+    needs: release
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: v${{ needs.release.outputs.version }}
+
+      - name: Push NitroOtaBundleManager to CocoaPods trunk
+        run: pod trunk push NitroOtaBundleManager.podspec --allow-warnings
+        env:
+          COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
