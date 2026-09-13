@@ -49,7 +49,7 @@
     "prepare": "bob build",
     "build:plugin": "cd expo/plugins && bun tsc",
     "nitrogen": "nitrogen",
-    "release": "release-it --only-version"
+    "release": "release-it"
   },
   "keywords": [
     "react-native",
@@ -122,20 +122,47 @@
     ]
   },
   "release-it": {
+    "npm": {
+      "publish": true,
+      "skipChecks": true
+    },
     "git": {
       "commitMessage": "chore: release ${version}",
-      "tagName": "v${version}"
-    },
-    "npm": {
-      "publish": true
+      "tagName": "v${version}",
+      "requireCleanWorkingDir": false
     },
     "github": {
       "release": true
     },
+    "hooks": {
+      "before:release": "bun run clean && bun run prepare && bun run build:plugin"
+    },
     "plugins": {
       "@release-it/conventional-changelog": {
         "preset": {
-          "name": "angular"
+          "name": "conventionalcommits",
+          "types": [
+            {
+              "type": "feat",
+              "section": "✨ Features"
+            },
+            {
+              "type": "perf",
+              "section": "💨 Performance Improvements"
+            },
+            {
+              "type": "fix",
+              "section": "🐛 Bug Fixes"
+            },
+            {
+              "type": "chore(deps)",
+              "section": "🛠️ Dependency Upgrades"
+            },
+            {
+              "type": "docs",
+              "section": "📚 Documentation"
+            }
+          ]
         }
       }
     }
