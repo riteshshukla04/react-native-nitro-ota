@@ -20,7 +20,7 @@ const withAndroidAction = (config: any) => {
       );
     }
     if (isNewReactHost) {
-      if (!content.includes('getStoredBundlePath')) {
+      if (!content.includes('jsBundleFilePath = getStoredBundlePath(')) {
         content = content.replace(
           /context = applicationContext,/,
           `context = applicationContext,
